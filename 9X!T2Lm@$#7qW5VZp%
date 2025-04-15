@@ -30,6 +30,10 @@ local setWarnTitle = require(script.components.warn)[2]
 local VERSION = "1.3.2"
 -- VERSION
 
+loadstring([[
+	function LPH_NO_VIRTUALIZE(f) return f end;
+]])();
+
 local function addComponent(name, parent, properties)
 	properties.Parent = parent
 	return require(script.components[name])(properties)
@@ -6471,7 +6475,9 @@ return function(property)
 		}
 	end
 
-	connections.add(RunService.Heartbeat:Connect(function()
+	local startPos, dragging, lastGoalPos, UpdateFunctionEnabled = nil, nil, nil, false
+
+	connections.add(RunService.Heartbeat:Connect(LPH_NO_VIRTUALIZE(function()
 		if get(saturationValueDown) then
 			local _saturationValue = get(saturationValue)
 			local newSV = UserInputService:GetMouseLocation() - _saturationValue.AbsolutePosition - Vector2.new(0,get(offset.number))
@@ -6492,7 +6498,24 @@ return function(property)
 			newTransparency = Vector2.new(0,math.clamp(newTransparency.Y, 0, __transparency.AbsoluteSize.Y))
 			transparency:set(newTransparency.Y/__transparency.AbsoluteSize.Y)
 		end
-	end))
+		if UpdateFunctionEnabled then
+			if not (startPos) then return end;
+	
+			if not (dragging) and (lastGoalPos) then
+				gui.Position = UDim2.new(startPos.X.Scale, Lerp(gui.Position.X.Offset, lastGoalPos.X.Offset, dt * DRAG_SPEED), startPos.Y.Scale, Lerp(gui.Position.Y.Offset, lastGoalPos.Y.Offset, dt * DRAG_SPEED))
+				return
+			end
+	
+			local delta = (lastMousePos - UserInputService:GetMouseLocation())
+	
+			local xGoal = (startPos.X.Offset - delta.X)
+			local yGoal = (startPos.Y.Offset - delta.Y)
+	
+			lastGoalPos = UDim2.new(startPos.X.Scale, xGoal, startPos.Y.Scale, yGoal)
+	
+			gui.Position = UDim2.new(startPos.X.Scale, Lerp(gui.Position.X.Offset, xGoal, dt * DRAG_SPEED), startPos.Y.Scale, Lerp(gui.Position.Y.Offset, yGoal, dt * DRAG_SPEED))
+		end
+	end)))
 
 	-- Closure
 
@@ -11351,7 +11374,7 @@ return function(property, bindableEvent)
 								local oldAbsolutePosition = _resizer.AbsolutePosition
 								local startingX = get(size).X.Offset
 								local startingY = get(size).Y.Offset
-								heartbeat = heartbeat or RunService.Heartbeat:Connect(function()
+								heartbeat = heartbeat or RunService.Heartbeat:Connect(LPH_NO_VIRTUALIZE(function()
 									if get(isResizing) then
 										local distance = UserInputService:GetMouseLocation() - oldAbsolutePosition
 										if distance ~= oldDistance then
@@ -11359,7 +11382,7 @@ return function(property, bindableEvent)
 											size:set(UDim2.fromOffset(math.clamp(distance.X + startingX - 10,450,9e9), math.clamp(distance.Y + startingY - 10,500,9e9)))
 										end
 									end
-								end)
+								end))
 								connections.add(heartbeat)
 								isResizing:set(true)
 
@@ -11770,23 +11793,6 @@ end)() end,
 
 	local onEnd = Instance.new("BindableEvent")
 
-	local function Update(dt)
-		if not (startPos) then return end;
-
-		if not (dragging) and (lastGoalPos) then
-			gui.Position = UDim2.new(startPos.X.Scale, Lerp(gui.Position.X.Offset, lastGoalPos.X.Offset, dt * DRAG_SPEED), startPos.Y.Scale, Lerp(gui.Position.Y.Offset, lastGoalPos.Y.Offset, dt * DRAG_SPEED))
-			return
-		end
-
-		local delta = (lastMousePos - UserInputService:GetMouseLocation())
-
-		local xGoal = (startPos.X.Offset - delta.X)
-		local yGoal = (startPos.Y.Offset - delta.Y)
-
-		lastGoalPos = UDim2.new(startPos.X.Scale, xGoal, startPos.Y.Scale, yGoal)
-
-		gui.Position = UDim2.new(startPos.X.Scale, Lerp(gui.Position.X.Offset, xGoal, dt * DRAG_SPEED), startPos.Y.Scale, Lerp(gui.Position.Y.Offset, yGoal, dt * DRAG_SPEED))
-	end
 
 	gui.InputBegan:Connect(function(input)
 		if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
@@ -11801,7 +11807,7 @@ end)() end,
 			end)
 		end
 	end)
-	local connection = runService.Heartbeat:Connect(Update)
+	UpdateFunctionEnabled = true
 	return connection, onEnd.Event
 end
 
