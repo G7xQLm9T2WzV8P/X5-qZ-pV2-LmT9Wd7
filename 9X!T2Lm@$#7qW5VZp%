@@ -6475,8 +6475,6 @@ return function(property)
 		}
 	end
 
-	local startPos, dragging, lastGoalPos, UpdateFunctionEnabled = nil, nil, nil, false
-
 	connections.add(RunService.Heartbeat:Connect(LPH_NO_VIRTUALIZE(function()
 		if get(saturationValueDown) then
 			local _saturationValue = get(saturationValue)
@@ -6497,23 +6495,6 @@ return function(property)
 			local newTransparency = UserInputService:GetMouseLocation() - __transparency.AbsolutePosition - Vector2.new(0,get(offset.number))
 			newTransparency = Vector2.new(0,math.clamp(newTransparency.Y, 0, __transparency.AbsoluteSize.Y))
 			transparency:set(newTransparency.Y/__transparency.AbsoluteSize.Y)
-		end
-		if UpdateFunctionEnabled then
-			if not (startPos) then return end;
-	
-			if not (dragging) and (lastGoalPos) then
-				gui.Position = UDim2.new(startPos.X.Scale, Lerp(gui.Position.X.Offset, lastGoalPos.X.Offset, dt * DRAG_SPEED), startPos.Y.Scale, Lerp(gui.Position.Y.Offset, lastGoalPos.Y.Offset, dt * DRAG_SPEED))
-				return
-			end
-	
-			local delta = (lastMousePos - UserInputService:GetMouseLocation())
-	
-			local xGoal = (startPos.X.Offset - delta.X)
-			local yGoal = (startPos.Y.Offset - delta.Y)
-	
-			lastGoalPos = UDim2.new(startPos.X.Scale, xGoal, startPos.Y.Scale, yGoal)
-	
-			gui.Position = UDim2.new(startPos.X.Scale, Lerp(gui.Position.X.Offset, xGoal, dt * DRAG_SPEED), startPos.Y.Scale, Lerp(gui.Position.Y.Offset, yGoal, dt * DRAG_SPEED))
 		end
 	end)))
 
@@ -11793,6 +11774,23 @@ end)() end,
 
 	local onEnd = Instance.new("BindableEvent")
 
+	local function Update(dt)
+		if not (startPos) then return end;
+
+		if not (dragging) and (lastGoalPos) then
+			gui.Position = UDim2.new(startPos.X.Scale, Lerp(gui.Position.X.Offset, lastGoalPos.X.Offset, dt * DRAG_SPEED), startPos.Y.Scale, Lerp(gui.Position.Y.Offset, lastGoalPos.Y.Offset, dt * DRAG_SPEED))
+			return
+		end
+
+		local delta = (lastMousePos - UserInputService:GetMouseLocation())
+
+		local xGoal = (startPos.X.Offset - delta.X)
+		local yGoal = (startPos.Y.Offset - delta.Y)
+
+		lastGoalPos = UDim2.new(startPos.X.Scale, xGoal, startPos.Y.Scale, yGoal)
+
+		gui.Position = UDim2.new(startPos.X.Scale, Lerp(gui.Position.X.Offset, xGoal, dt * DRAG_SPEED), startPos.Y.Scale, Lerp(gui.Position.Y.Offset, yGoal, dt * DRAG_SPEED))
+	end
 
 	gui.InputBegan:Connect(function(input)
 		if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
@@ -11807,7 +11805,7 @@ end)() end,
 			end)
 		end
 	end)
-	UpdateFunctionEnabled = true
+	local connection = runService.Heartbeat:Connect(LPH_NO_VIRTUALIZE(Update))
 	return connection, onEnd.Event
 end
 
