@@ -185,11 +185,8 @@ function chrono:Window(windowProperty)
 
 	-- Mouse Position
 
-	local offsetY = get(offset.number)
-	local offsetVec = Vector2.new(0, offsetY)
-	
 	connections.add(RunService.RenderStepped:Connect(function()
-		mousePosition:update("vector2", UserInputService:GetMouseLocation() - offsetVec)
+		mousePosition:update("vector2", UserInputService:GetMouseLocation() - Vector2.new(0, get(offset.number)))
 	end))
 	
 
