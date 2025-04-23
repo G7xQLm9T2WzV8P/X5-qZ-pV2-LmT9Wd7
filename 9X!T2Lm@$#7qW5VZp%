@@ -185,9 +185,13 @@ function chrono:Window(windowProperty)
 
 	-- Mouse Position
 
+	local offsetY = get(offset.number)
+	local offsetVec = Vector2.new(0, offsetY)
+	
 	connections.add(RunService.RenderStepped:Connect(function()
-		mousePosition:update("vector2", UserInputService:GetMouseLocation() - Vector2.new(0, get(offset.number)))
+		mousePosition:update("vector2", UserInputService:GetMouseLocation() - offsetVec)
 	end))
+	
 
 	-- Hide Bind
 
@@ -5286,27 +5290,46 @@ return function(property)
 	end
 
 	connections.add(RunService.Heartbeat:Connect(function()
+		local mousePos = UserInputService:GetMouseLocation()
+		local offsetY = get(offset.number)
+		local offsetVec = Vector2.new(0, offsetY)
+	
 		if get(saturationValueDown) then
-			local _saturationValue = get(saturationValue)
-			local newSV = UserInputService:GetMouseLocation() - _saturationValue.AbsolutePosition - Vector2.new(0,get(offset.number))
-			newSV = Vector2.new(math.clamp(newSV.X, 0, _saturationValue.AbsoluteSize.X), math.clamp(newSV.Y, 0, _saturationValue.AbsoluteSize.Y))
-			local _hue = get(color):ToHSV()
-			color:set(Color3.fromHSV(_hue, newSV.X/_saturationValue.AbsoluteSize.X,(_saturationValue.AbsoluteSize.Y - newSV.Y)/_saturationValue.AbsoluteSize.Y))
+			local satRef = get(saturationValue)
+			local absPos = satRef.AbsolutePosition
+			local absSize = satRef.AbsoluteSize
+	
+			local newSV = mousePos - absPos - offsetVec
+			newSV = Vector2.new(math.clamp(newSV.X, 0, absSize.X), math.clamp(newSV.Y, 0, absSize.Y))
+	
+			local h, _, _ = get(color):ToHSV()
+			color:set(Color3.fromHSV(h, newSV.X / absSize.X, (absSize.Y - newSV.Y) / absSize.Y))
 		end
+	
 		if get(hueDown) then
-			local _hue = get(hue)
-			local newHue = UserInputService:GetMouseLocation() - _hue.AbsolutePosition - Vector2.new(0,get(offset.number))
-			newHue = Vector2.new(0, math.clamp(newHue.Y, 0, _hue.AbsoluteSize.Y))
-			local _,_sat,_val = get(color):ToHSV()
-			color:set(Color3.fromHSV((_hue.AbsoluteSize.Y - newHue.Y)/_hue.AbsoluteSize.Y, _sat, _val))
+			local hueRef = get(hue)
+			local absPos = hueRef.AbsolutePosition
+			local absSize = hueRef.AbsoluteSize
+	
+			local newHue = mousePos - absPos - offsetVec
+			newHue = Vector2.new(0, math.clamp(newHue.Y, 0, absSize.Y))
+	
+			local _, s, v = get(color):ToHSV()
+			color:set(Color3.fromHSV((absSize.Y - newHue.Y) / absSize.Y, s, v))
 		end
+	
 		if get(transparencyDown) then
-			local __transparency = get(transparencyRef)
-			local newTransparency = UserInputService:GetMouseLocation() - __transparency.AbsolutePosition - Vector2.new(0,get(offset.number))
-			newTransparency = Vector2.new(0,math.clamp(newTransparency.Y, 0, __transparency.AbsoluteSize.Y))
-			transparency:set(newTransparency.Y/__transparency.AbsoluteSize.Y)
+			local transRef = get(transparencyRef)
+			local absPos = transRef.AbsolutePosition
+			local absSize = transRef.AbsoluteSize
+	
+			local newTransparency = mousePos - absPos - offsetVec
+			newTransparency = Vector2.new(0, math.clamp(newTransparency.Y, 0, absSize.Y))
+	
+			transparency:set(newTransparency.Y / absSize.Y)
 		end
 	end))
+	
 
 	-- Closure
 
@@ -10059,15 +10082,23 @@ return function(property, bindableEvent)
 								local oldAbsolutePosition = _resizer.AbsolutePosition
 								local startingX = get(size).X.Offset
 								local startingY = get(size).Y.Offset
+								local huge = math.huge
 								heartbeat = heartbeat or RunService.Heartbeat:Connect(function()
-									if get(isResizing) then
-										local distance = UserInputService:GetMouseLocation() - oldAbsolutePosition
-										if distance ~= oldDistance then
-											oldDistance = distance
-											size:set(UDim2.fromOffset(math.clamp(distance.X + startingX - 10,450,9e9), math.clamp(distance.Y + startingY - 10,500,9e9)))
-										end
+									if not get(isResizing) then return end
+								
+									local mousePos = UserInputService:GetMouseLocation()
+									local distance = mousePos - oldAbsolutePosition
+								
+									if distance ~= oldDistance then
+										oldDistance = distance
+								
+										local newWidth = math.clamp(distance.X + startingX - 10, 450, huge)
+										local newHeight = math.clamp(distance.Y + startingY - 10, 500, huge)
+								
+										size:set(UDim2.fromOffset(newWidth, newHeight))
 									end
 								end)
+								
 								connections.add(heartbeat)
 								isResizing:set(true)
 
