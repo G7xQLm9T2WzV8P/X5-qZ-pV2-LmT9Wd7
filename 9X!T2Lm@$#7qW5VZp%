@@ -3,6 +3,27 @@
 -- Will be used later for getting flattened globals
 local ImportGlobals
 
+-- // Math
+local huge = math.huge
+local random = math.random
+local abs = math.abs
+local floor = math.floor
+local ceil = math.ceil
+local clamp = math.clamp
+local min = math.min
+local max = math.max
+local atan2 = math.atan2
+local sin = math.sin
+local cos = math.cos
+local rad = math.rad
+local deg = math.deg
+local sqrt = math.sqrt
+local pow = math.pow
+local log = math.log
+local tan = math.tan
+local exp = math.exp
+
+
 -- Holds direct closure data (defining this before the DOM tree for line debugging etc)
 local ClosureBindings = {
     function()local wax,script,require=ImportGlobals(1)local ImportGlobals return (function(...)local Bundles = require(script.Bundles)
@@ -188,7 +209,6 @@ function chrono:Window(windowProperty)
 	connections.add(RunService.RenderStepped:Connect(function()
 		mousePosition:update("vector2", UserInputService:GetMouseLocation() - Vector2.new(0, get(offset.number)))
 	end))
-	
 
 	-- Hide Bind
 
@@ -664,7 +684,7 @@ local function updateAllSprings()
 			local newDisplacement = oldDisplacement * posPos + oldVelocity * posVel
 			local newVelocity = oldDisplacement * velPos + oldVelocity * velVel
 
-			if math.abs(newDisplacement) > EPSILON or math.abs(newVelocity) > EPSILON then
+			if abs(newDisplacement) > EPSILON or abs(newVelocity) > EPSILON then
 				isMoving = true
 			end
 
@@ -1242,12 +1262,12 @@ local function springCoefficients(time: number, damping: number, speed: number):
 		--		 + v0(z1 e^(t z1) - z2 e^(t z2))/(z1 - z2)
 
 		local scaledTime = time * speed
-		local alpha = math.sqrt(damping^2 - 1)
+		local alpha = sqrt(damping^2 - 1)
 		local scaledInvAlpha = -0.5 / alpha
 		local z1 = -alpha - damping
 		local z2 = 1 / z1
-		local expZ1 = math.exp(scaledTime * z1)
-		local expZ2 = math.exp(scaledTime * z2)
+		local expZ1 = exp(scaledTime * z1)
+		local expZ2 = exp(scaledTime * z2)
 
 		posPos = (expZ2*z1 - expZ1*z2) * scaledInvAlpha
 		posVel = (expZ1 - expZ2) * scaledInvAlpha / speed
@@ -1260,7 +1280,7 @@ local function springCoefficients(time: number, damping: number, speed: number):
 		-- v[t] -> x0(t ω^2)(-e^-tω) + v0(1 - tω)(e^-tω)
 
 		local scaledTime = time * speed
-		local expTerm = math.exp(-scaledTime)
+		local expTerm = exp(-scaledTime)
 
 		posPos = expTerm * (1 + scaledTime)
 		posVel = expTerm * time
@@ -1277,12 +1297,12 @@ local function springCoefficients(time: number, damping: number, speed: number):
 		--       + v0(e^-tζω)(α Cos[tα] - ζω Sin[tα])/α
 
 		local scaledTime = time * speed
-		local alpha = math.sqrt(1 - damping^2)
+		local alpha = sqrt(1 - damping^2)
 		local invAlpha = 1 / alpha
 		local alphaTime = alpha * scaledTime
-		local expTerm = math.exp(-scaledTime*damping)
-		local sinTerm = expTerm * math.sin(alphaTime)
-		local cosTerm = expTerm * math.cos(alphaTime)
+		local expTerm = exp(-scaledTime*damping)
+		local sinTerm = expTerm * sin(alphaTime)
+		local cosTerm = expTerm * cos(alphaTime)
 		local sinInvAlpha = sinTerm*invAlpha
 		local sinInvAlphaDamp = sinInvAlpha*damping
 
@@ -1431,9 +1451,9 @@ function Oklab.from(lab: Vector3, unclamped: boolean?): Color3
 	local blue = l * -0.0041960863 - m * 0.7034186147 + s * 1.7076147010
 
 	if not unclamped then
-		red = math.clamp(red, 0, 1)
-		green = math.clamp(green, 0, 1)
-		blue = math.clamp(blue, 0, 1)
+		red = clamp(red, 0, 1)
+		green = clamp(green, 0, 1)
+		blue = clamp(blue, 0, 1)
 	end
 
 	return Color3.new(red, green, blue)
@@ -1569,9 +1589,9 @@ type Descendant = (PubTypes.Dependent & PubTypes.Dependency) | PubTypes.Dependen
 
 -- Credit: https://blog.elttob.uk/2022/11/07/sets-efficient-topological-search.html
 local function updateAll(root: PubTypes.Dependency)
-	local counters = {} :: {[Descendant]: number}
-	local flags = {} :: {[Descendant]: boolean}
-	local queue = {} :: {Descendant}
+	local counters: {[Descendant]: number} = {}
+	local flags: {[Descendant]: boolean} = {}
+	local queue: {Descendant} = {}
 	local queueSize = 0
 	local queuePos = 1
 
@@ -1581,45 +1601,34 @@ local function updateAll(root: PubTypes.Dependency)
 		flags[object] = true
 	end
 
-	-- Pass 1: counting up ts pmo
+	-- Pass 1: counting up
 	while queuePos <= queueSize do
-		local current = queue[queuePos]
-		local count = counters[current]
-		counters[current] = (count or 0) + 1
-
-		local dependentSet = current.dependentSet
-		if dependentSet then
-			for obj in dependentSet do
+		local next = queue[queuePos]
+		local counter = counters[next]
+		counters[next] = if counter == nil then 1 else counter + 1
+		if (next :: any).dependentSet ~= nil then
+			for object in (next :: any).dependentSet do
 				queueSize += 1
-				queue[queueSize] = obj
+				queue[queueSize] = object
 			end
 		end
-
 		queuePos += 1
 	end
 
 	-- Pass 2: counting down + processing
 	queuePos = 1
 	while queuePos <= queueSize do
-		local current = queue[queuePos]
-		local count = counters[current] - 1
-		counters[current] = count
-
-		if count == 0 and flags[current] then
-			if current:update() then
-				local dependentSet = current.dependentSet
-				if dependentSet then
-					for obj in dependentSet do
-						flags[obj] = true
-					end
-				end
+		local next = queue[queuePos]
+		local counter = counters[next] - 1
+		counters[next] = counter
+		if counter == 0 and flags[next] and next:update() and (next :: any).dependentSet ~= nil then
+			for object in (next :: any).dependentSet do
+				flags[object] = true
 			end
 		end
-
 		queuePos += 1
 	end
 end
-
 
 return updateAll
 end)() end,
@@ -5114,7 +5123,7 @@ return function(property)
 										Text = computed(function()
 											local a = {get(color).R,get(color).G,get(color).B}
 											for i,v in a do
-												a[i] = math.floor(math.clamp(v*255,0,255))
+												a[i] = floor(clamp(v*255,0,255))
 											end
 											return table.concat(a, ", ")
 										end),
@@ -5130,7 +5139,7 @@ return function(property)
 											local _rgb = _RGBTextBox.Text:gsub(" ","")
 											local a = {get(color).R,get(color).G,get(color).B}
 											for i,v in a do
-												a[i] = math.floor(math.clamp(v*255,0,255))
+												a[i] = floor(clamp(v*255,0,255))
 											end
 											local _old = table.concat(a, ", ")
 											local s,result = pcall(function()
@@ -5140,7 +5149,7 @@ return function(property)
 													if not tonumber(v) then
 														return nil
 													end
-													b[i] = math.clamp(v, 0, 255)
+													b[i] = clamp(v, 0, 255)
 												end)
 												return Color3.fromRGB(b[1],b[2],b[3])
 											end)
@@ -5290,27 +5299,24 @@ return function(property)
 		if get(saturationValueDown) then
 			local _saturationValue = get(saturationValue)
 			local newSV = UserInputService:GetMouseLocation() - _saturationValue.AbsolutePosition - Vector2.new(0,get(offset.number))
-			newSV = Vector2.new(math.clamp(newSV.X, 0, _saturationValue.AbsoluteSize.X), math.clamp(newSV.Y, 0, _saturationValue.AbsoluteSize.Y))
+			newSV = Vector2.new(clamp(newSV.X, 0, _saturationValue.AbsoluteSize.X), clamp(newSV.Y, 0, _saturationValue.AbsoluteSize.Y))
 			local _hue = get(color):ToHSV()
 			color:set(Color3.fromHSV(_hue, newSV.X/_saturationValue.AbsoluteSize.X,(_saturationValue.AbsoluteSize.Y - newSV.Y)/_saturationValue.AbsoluteSize.Y))
 		end
 		if get(hueDown) then
 			local _hue = get(hue)
 			local newHue = UserInputService:GetMouseLocation() - _hue.AbsolutePosition - Vector2.new(0,get(offset.number))
-			newHue = Vector2.new(0, math.clamp(newHue.Y, 0, _hue.AbsoluteSize.Y))
+			newHue = Vector2.new(0, clamp(newHue.Y, 0, _hue.AbsoluteSize.Y))
 			local _,_sat,_val = get(color):ToHSV()
 			color:set(Color3.fromHSV((_hue.AbsoluteSize.Y - newHue.Y)/_hue.AbsoluteSize.Y, _sat, _val))
 		end
 		if get(transparencyDown) then
 			local __transparency = get(transparencyRef)
 			local newTransparency = UserInputService:GetMouseLocation() - __transparency.AbsolutePosition - Vector2.new(0,get(offset.number))
-			newTransparency = Vector2.new(0,math.clamp(newTransparency.Y, 0, __transparency.AbsoluteSize.Y))
+			newTransparency = Vector2.new(0,clamp(newTransparency.Y, 0, __transparency.AbsoluteSize.Y))
 			transparency:set(newTransparency.Y/__transparency.AbsoluteSize.Y)
 		end
 	end))
-
-
-
 
 	-- Closure
 
@@ -5700,7 +5706,7 @@ return function(property)
 					},
 					new "ScrollingFrame" {
 						Size = computed(function()
-							return UDim2.new(1,0,0,(get(componentY) - 6)*math.clamp(#get(items),1,6)-4)
+							return UDim2.new(1,0,0,(get(componentY) - 6)*clamp(#get(items),1,6)-4)
 						end),
 						ScrollBarThickness = 6,
 						CanvasSize = UDim2.fromScale(0,0),
@@ -7177,7 +7183,7 @@ return function(property)
     end
     logFunction:update("func", addLog)
 
-    --task.delay(math.random(1000,4000)/1000, addLog, "error", "an error occured", 2)
+    --task.delay(random(1000,4000)/1000, addLog, "error", "an error occured", 2)
 
     local inst = new "ScrollingFrame" {
         Name = "log",
@@ -7643,7 +7649,7 @@ return function(property)
         local endTick
         repeat
             endTick = tick() - startTick
-            tickText:set(roundTo(1,math.clamp(endTick,0,get(duration))))
+            tickText:set(roundTo(1,clamp(endTick,0,get(duration))))
             task.wait()
         until endTick > get(duration)
     end)
@@ -8032,7 +8038,7 @@ return function(property)
 	local points = property.Points or value({})
 	local displayAsPercent = property.DisplayAsPercent or value(false)
 	local roundTo = property.DecimalPlace or value(0)
-	local default = get(property.Default) and value(math.clamp(get(property.Default), get(min), get(max)))
+	local default = get(property.Default) and value(clamp(get(property.Default), get(min), get(max)))
 	if not get(default) then
 		default = value(get(min))
 	end
@@ -8049,7 +8055,7 @@ return function(property)
 	end
 	local function round(Value)
 		if get(roundTo) == 0 then
-			return math.floor(Value)
+			return floor(Value)
 		end
 		return tonumber(string.format('%.' .. get(roundTo) .. 'f', Value))
 	end
@@ -8207,7 +8213,7 @@ return function(property)
 										[onevent "FocusLost"] = function()
 											local textbox = get(textBoxRef)
 											if tonumber(textbox.Text) then
-												percentageOf:set(math.clamp(tonumber(textbox.Text), get(min), get(max)))
+												percentageOf:set(clamp(tonumber(textbox.Text), get(min), get(max)))
 											else
 												if get(displayAsPercent) then
 													textbox.Text = tostring(round(get(percentage) * 100)).."%"
@@ -8262,20 +8268,13 @@ return function(property)
 										local gPos = get(textbuttonRef).Size.X.Offset
 										local Diff = mPos - (get(textbuttonRef).AbsolutePosition.X + gPos)
 
-										local btnsizew = get(textbuttonRef).AbsoluteSize.X
-										local minValue = get(min)
-										local maxValue = get(max)
-										
-										while get(button1Down) do
+										while get(button1Down) and task.wait() do
+											local nMPos = UserInputService:GetMouseLocation().X
+											local nX = clamp(gPos + (nMPos - mPos) + Diff, 0, get(textbuttonRef).AbsoluteSize.X)
+
+											percentageOf:set(round(mapValue(nX, 0, get(textbuttonRef).AbsoluteSize.X, get(min), get(max))))
 											RunService.RenderStepped:Wait()
-										
-											local mouseX = UserInputService:GetMouseLocation().X
-											local newX = math.clamp(gPos + (mouseX - mPos) + Diff, 0, btnsizew)
-											local mapped = mapValue(newX, 0, btnsizew, minValue, maxValue)
-										
-											percentageOf:set(round(mapped))
 										end
-										
 									end
 								end,
 
@@ -8413,7 +8412,7 @@ return function(property)
 		local _didPass, _failedItems = typecheck({['SetValue'] = newValue}, {SetValue = 0})
 		assert(_didPass, table.concat(_failedItems, "\n"))
 
-		percentageOf:set(math.clamp(newValue, get(min), get(max)))
+		percentageOf:set(clamp(newValue, get(min), get(max)))
 	end
 	function returnFunctions:Enable()
 		isEnabled:set(true)
@@ -10063,23 +10062,15 @@ return function(property, bindableEvent)
 								local oldAbsolutePosition = _resizer.AbsolutePosition
 								local startingX = get(size).X.Offset
 								local startingY = get(size).Y.Offset
-								local huge = math.huge
 								heartbeat = heartbeat or RunService.Heartbeat:Connect(function()
-									if not get(isResizing) then return end
-								
-									local mousePos = UserInputService:GetMouseLocation()
-									local distance = mousePos - oldAbsolutePosition
-								
-									if distance ~= oldDistance then
-										oldDistance = distance
-								
-										local newWidth = math.clamp(distance.X + startingX - 10, 450, huge)
-										local newHeight = math.clamp(distance.Y + startingY - 10, 500, huge)
-								
-										size:set(UDim2.fromOffset(newWidth, newHeight))
+									if get(isResizing) then
+										local distance = UserInputService:GetMouseLocation() - oldAbsolutePosition
+										if distance ~= oldDistance then
+											oldDistance = distance
+											size:set(UDim2.fromOffset(clamp(distance.X + startingX - 10,450,9e9), clamp(distance.Y + startingY - 10,500,9e9)))
+										end
 									end
 								end)
-								
 								connections.add(heartbeat)
 								isResizing:set(true)
 
@@ -10528,9 +10519,9 @@ end
 end)() end,
     [97] = function()local wax,script,require=ImportGlobals(97)local ImportGlobals return (function(...)return function(seconds, decimal)
     decimal = decimal or 0
-    local dayCount = math.floor(seconds/(60*60*24))
+    local dayCount = floor(seconds/(60*60*24))
     seconds -= dayCount*(60*60*24)
-    local hourCount = math.floor(seconds/(60*60))
+    local hourCount = floor(seconds/(60*60))
     seconds -= hourCount*(60*60)
     if decimal == 0 then
         seconds = math.round(seconds)
@@ -10561,7 +10552,7 @@ end)() end,
     [100] = function()local wax,script,require=ImportGlobals(100)local ImportGlobals return (function(...)local characters = string.split("qwertyuiopasdfghjklzxcvbnmQWERTYUIOPASDFGHJKLZXCVBNM1234567890","")
 local function randomString(length)
     if length > 0 then
-        return randomString(length - 1) .. characters[math.random(1, #characters)]
+        return randomString(length - 1) .. characters[random(1, #characters)]
     else
         return ""
     end
