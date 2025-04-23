@@ -7674,8 +7674,8 @@ return function(quantity, parent)
     --local uid = randomString(8)
 
 	local Random = math.random
-	local ImageTable = {} 
-	local ActiveImage = {} 
+	local Circles = {} 
+	local ActiveCircles = {} 
 
 	local thread = coroutine.create(function()
 		local BgContainer = parent
