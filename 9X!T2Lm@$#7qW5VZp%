@@ -8258,13 +8258,20 @@ return function(property)
 										local gPos = get(textbuttonRef).Size.X.Offset
 										local Diff = mPos - (get(textbuttonRef).AbsolutePosition.X + gPos)
 
-										while get(button1Down) and task.wait() do
-											local nMPos = UserInputService:GetMouseLocation().X
-											local nX = math.clamp(gPos + (nMPos - mPos) + Diff, 0, get(textbuttonRef).AbsoluteSize.X)
-
-											percentageOf:set(round(mapValue(nX, 0, get(textbuttonRef).AbsoluteSize.X, get(min), get(max))))
+										local btnsizew = get(textbuttonRef).AbsoluteSize.X
+										local minValue = get(min)
+										local maxValue = get(max)
+										
+										while get(button1Down) do
 											RunService.RenderStepped:Wait()
+										
+											local mouseX = UserInputService:GetMouseLocation().X
+											local newX = math.clamp(gPos + (mouseX - mPos) + Diff, 0, btnsizew)
+											local mapped = mapValue(newX, 0, btnsizew, minValue, maxValue)
+										
+											percentageOf:set(round(mapped))
 										end
+										
 									end
 								end,
 
