@@ -7671,115 +7671,97 @@ return function(quantity, parent)
 
     local instances = {}
 
-    --local uid = randomString(8) ????
+    --local uid = randomString(8)
 
-	local Random = math.random
-	local Circles = {} 
-	local ActiveCircles = {} 
-		
-		local thread = coroutine.create(function() -- // yaarg ♻️♻️♻️♻️♻️
-			local _bgContainer = parent
-			local Enabled = true
+	local thread = coroutine.create(function()
+		local Random = math.random
+		local Wait = task.wait
+		local Delay = task.delay
+		local FromScale = UDim2.fromScale
+		local FromOffset = UDim2.fromOffset
+		local Vhalf = Vector2.new(0.5, 0.5)
+		local Get = get
+		local Animate = animate
+		local New = new
+		local Value = value
+		local RandomString = randomString
+		local RandColor = randomColor
+		local Background = parent
 	
-			-- // cached everything as the great optimization king once said "Cache everything or you shall be cached" or some shit like that
-		
-			local function GetCircle()
-				local X = table.remove(Circles)
-				if X then
-					X.Parent = _bgContainer
-					X.Visible = true
-					return X
-				end
-		
-				return new "ImageLabel" {
-					ZIndex = 0,
-					AnchorPoint = Vector2.new(0.5, 0.5),
-					BackgroundTransparency = 1,
-					Image = "rbxassetid://88314233994030",
-					Parent = _bgContainer,
-				}
-			end
-		
-			local function RemoveCircle(X)
-				if X then
-					X.Visible = false
-					X.Parent = nil
-					table.insert(Circles, X)
-				end
+		while true do
+			if currentCircles >= maximumCircle then
+				Wait()
+				continue
 			end
 	
-			-- // funcs to recycle the circles you donut
-			
-			while Enabled do
-				if currentCircles >= maximumCircle then
-					task.wait(0.25)
-					continue
-				end
-		
-				task.wait(Random(25, 50) / 100)
-		
-				currentCircles += 1
-		
-				local StartPos = UDim2.fromScale(Random(), Random())
-				local EndPos = UDim2.fromScale(Random(), Random())
-				local WaitingPeriod = Random(0, 20) / 10
-				local SizeValue = Random(32, 256)
-				local NewSize = UDim2.fromOffset(SizeValue, SizeValue)
-				local NewColor = randomColor[Random(1, #randomColor)]
-		
-				local Position = value(StartPos)
-				local RandomSize = value(NewSize)
-				local Start = value(false)
-		
-				local X = GetCircle()
-				X.Name = randomString(8)
-				X.ImageColor3 = NewColor
-		
-				X.Size = animate(function() return get(RandomSize) end, 2, 1)
-				X.Position = animate(function() return get(Position) end, 2, 1.3)
-				X.ImageTransparency = animate(function() return get(Start) and 0 or 1 end, 2, 1)
-		
-				ActiveCircles[X] = true
-				Start:set(true)
-		
-				task.spawn(function()
-					while X and X.ImageTransparency > Random(0, 500) / 1000 do
-						task.wait()
-					end
-		
-					task.wait(WaitingPeriod)
-					Position:set(EndPos)
-					RandomSize:set(UDim2.fromOffset(Random(32, 256), Random(32, 256)))
-		
-					task.wait(Random(35, 39) / 10 + Random(0, 30) / 20)
-		
-					if not X then return end
-					Start:set(false)
+			Wait(Random(25, 50) / 100)
+	
+			currentCircles += 1
+	
+			local startPos = FromScale(Random(), Random())
+			local endPos = FromScale(Random(), Random())
+			local waitTime = Random(0, 20) / 10
+			local sizeOffset = Random(32, 256)
+			local start = Value(false)
+	
+			local position = Value(startPos)
+			local randomSize = Value(FromOffset(sizeOffset, sizeOffset))
+	
+			local color = RandColor[Random(1, #RandColor)]
+	
+			local circle = New "ImageLabel" {
+				ZIndex = 0,
+				Name = RandomString(8),
+				Parent = Background,
+				AnchorPoint = Vhalf,
+				BackgroundTransparency = 1,
+				Image = "rbxassetid://88314233994030",
+				ImageColor3 = color,
+				Size = Animate(function() return Get(randomSize) end, 2, 1),
+				Position = Animate(function() return Get(position) end, 2, 1.3),
+				ImageTransparency = Animate(function() return Get(start) and 0 or 1 end, 2, 1)
+			}
+	
+			table.insert(instances, circle)
+			start:set(true)
+	
+			task.spawn(function()
+				repeat Wait() until circle.ImageTransparency < Random(0, 500) / 1000
+	
+				Delay(waitTime, function()
+					position:set(endPos)
+					local newSize = Random(32, 256)
+					randomSize:set(FromOffset(newSize, newSize))
+				end)
+	
+				Delay(Random(35, 39) / 10 + Random(0, 30) / 20, function()
+					start:set(false)
 					currentCircles -= 1
-		
-					task.wait(4)
-		
-					if X then
-						RemoveCircle(X)
-						ActiveCircles[X] = nil
+					Wait(4)
+	
+					if circle then
+						circle:Destroy()
+					end
+	
+					local i = table.find(instances, circle)
+					if i then
+						table.remove(instances, i)
 					end
 				end)
-			end
-		end)
-		
-		coroutine.resume(thread)
-		
-		return function()
-			for Obj in pairs(ActiveCircles) do
-				Obj:Destroy()
-			end
-			for _, Obj in ipairs(Circles) do
-				Obj:Destroy()
-			end
-			coroutine.close(thread)
+			end)
 		end
+	end)
 	
-end) end,
+	coroutine.resume(thread)
+	
+	return function()
+		for _, v in ipairs(instances) do
+			v:Destroy()
+		end
+		coroutine.close(thread)
+	end
+end
+end)() end,
     [77] = function()local wax,script,require=ImportGlobals(77)local ImportGlobals return (function(...)local chrono = script.Parent.Parent
 
 return function(property)
