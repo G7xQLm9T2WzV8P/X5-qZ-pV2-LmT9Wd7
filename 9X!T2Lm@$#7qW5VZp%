@@ -5287,46 +5287,30 @@ return function(property)
 	end
 
 	connections.add(RunService.Heartbeat:Connect(function()
-		local mousePos = UserInputService:GetMouseLocation()
-		local offsetY = get(offset.number)
-		local offsetVec = Vector2.new(0, offsetY)
-	
 		if get(saturationValueDown) then
-			local satRef = get(saturationValue)
-			local absPos = satRef.AbsolutePosition
-			local absSize = satRef.AbsoluteSize
-	
-			local newSV = mousePos - absPos - offsetVec
-			newSV = Vector2.new(math.clamp(newSV.X, 0, absSize.X), math.clamp(newSV.Y, 0, absSize.Y))
-	
-			local h, _, _ = get(color):ToHSV()
-			color:set(Color3.fromHSV(h, newSV.X / absSize.X, (absSize.Y - newSV.Y) / absSize.Y))
+			local _saturationValue = get(saturationValue)
+			local newSV = UserInputService:GetMouseLocation() - _saturationValue.AbsolutePosition - Vector2.new(0,get(offset.number))
+			newSV = Vector2.new(math.clamp(newSV.X, 0, _saturationValue.AbsoluteSize.X), math.clamp(newSV.Y, 0, _saturationValue.AbsoluteSize.Y))
+			local _hue = get(color):ToHSV()
+			color:set(Color3.fromHSV(_hue, newSV.X/_saturationValue.AbsoluteSize.X,(_saturationValue.AbsoluteSize.Y - newSV.Y)/_saturationValue.AbsoluteSize.Y))
 		end
-	
 		if get(hueDown) then
-			local hueRef = get(hue)
-			local absPos = hueRef.AbsolutePosition
-			local absSize = hueRef.AbsoluteSize
-	
-			local newHue = mousePos - absPos - offsetVec
-			newHue = Vector2.new(0, math.clamp(newHue.Y, 0, absSize.Y))
-	
-			local _, s, v = get(color):ToHSV()
-			color:set(Color3.fromHSV((absSize.Y - newHue.Y) / absSize.Y, s, v))
+			local _hue = get(hue)
+			local newHue = UserInputService:GetMouseLocation() - _hue.AbsolutePosition - Vector2.new(0,get(offset.number))
+			newHue = Vector2.new(0, math.clamp(newHue.Y, 0, _hue.AbsoluteSize.Y))
+			local _,_sat,_val = get(color):ToHSV()
+			color:set(Color3.fromHSV((_hue.AbsoluteSize.Y - newHue.Y)/_hue.AbsoluteSize.Y, _sat, _val))
 		end
-	
 		if get(transparencyDown) then
-			local transRef = get(transparencyRef)
-			local absPos = transRef.AbsolutePosition
-			local absSize = transRef.AbsoluteSize
-	
-			local newTransparency = mousePos - absPos - offsetVec
-			newTransparency = Vector2.new(0, math.clamp(newTransparency.Y, 0, absSize.Y))
-	
-			transparency:set(newTransparency.Y / absSize.Y)
+			local __transparency = get(transparencyRef)
+			local newTransparency = UserInputService:GetMouseLocation() - __transparency.AbsolutePosition - Vector2.new(0,get(offset.number))
+			newTransparency = Vector2.new(0,math.clamp(newTransparency.Y, 0, __transparency.AbsoluteSize.Y))
+			transparency:set(newTransparency.Y/__transparency.AbsoluteSize.Y)
 		end
 	end))
-	
+
+
+
 
 	-- Closure
 
