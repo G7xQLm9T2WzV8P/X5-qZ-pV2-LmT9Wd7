@@ -27,8 +27,10 @@ local flagCreator = require(script.Bundles.flags)
 local setWarnTitle = require(script.components.warn)[2]
 
 -- VERSION
-local VERSION = "1.3.5"
+local VERSION = "1.3.5" .. "-O"
 -- VERSION
+
+print(VERISON)
 
 local function addComponent(name, parent, properties)
 	properties.Parent = parent
@@ -7673,13 +7675,14 @@ return function(quantity, parent)
 
     --local uid = randomString(8)
 
-	local Random = math.random
-	local Circles = {} 
-	local ActiveCircles = {} 
+
 
 	local thread = coroutine.create(function()
 		local BgContainer = parent
 		local Enabled = true
+		local Random = math.random
+		local Circles = {} 
+		local ActiveCircles = {} 
 
 		local function GetCircle()
 			local X = table.remove(Circles)
