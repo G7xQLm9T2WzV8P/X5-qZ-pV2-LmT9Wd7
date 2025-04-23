@@ -7673,7 +7673,7 @@ return function(quantity, parent)
 
     --local uid = randomString(8) ????
 
-	local Thread = coroutine.create(function() -- // yaarg ♻️♻️♻️♻️♻️
+	local thread = coroutine.create(function() -- // yaarg ♻️♻️♻️♻️♻️
 		local _bgContainer = parent
 		local Random = math.random
 		local Circles = {} 
@@ -7766,7 +7766,7 @@ return function(quantity, parent)
 		end
 	end)
 	
-	coroutine.resume(Thread)
+	coroutine.resume(thread)
 	
 	return function()
 		for Obj in pairs(ActiveCircles) do
@@ -7775,7 +7775,7 @@ return function(quantity, parent)
 		for _, Obj in ipairs(Circles) do
 			Obj:Destroy()
 		end
-		coroutine.close(Thread)
+		coroutine.close(thread)
 	end
 	
 end)() end,
