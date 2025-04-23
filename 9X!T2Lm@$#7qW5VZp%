@@ -1,3 +1,4 @@
+local success, error = pcall(function()
 -- ++++++++ WAX BUNDLED DATA BELOW ++++++++ --
 
 -- Will be used later for getting flattened globals
@@ -11966,3 +11967,6 @@ end
 
 -- AoT adjustment: Load init module (MainModule behavior)
 return LoadScript(RealObjectRoot:GetChildren()[1])
+end)
+
+if success then print("yay") else print("error: " .. tostring(error))
