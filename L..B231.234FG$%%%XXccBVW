@@ -1,0 +1,6 @@
+local Info = {
+    ShouldDisconnect = false,
+    DisconnectReason = "Unspecified."
+}
+
+return Info
