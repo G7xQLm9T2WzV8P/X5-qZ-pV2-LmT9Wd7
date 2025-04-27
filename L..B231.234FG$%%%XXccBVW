@@ -1,5 +1,5 @@
 local Info = {
-    ShouldDisconnect = true,
+    ShouldDisconnect = false,
     DisconnectReason = "ChronoHub Update."
 }
 
