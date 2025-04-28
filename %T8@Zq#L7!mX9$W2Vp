@@ -183,7 +183,7 @@ ESP = {
 
 
                     
-                    if RootPart and Head and Humanoid and ShouldShow then
+                    if RootPart and Head and ShouldShow then
                         local _, OnScreen = Camera:WorldToViewportPoint(RootPart.Position)
                         if OnScreen then
                             local Hrp2D = Camera:WorldToViewportPoint(RootPart.Position)
@@ -309,11 +309,13 @@ ESP = {
                             if ESP_SETTINGS.ShowHealth and ESP_SETTINGS.Enabled then
                                 esp.healthOutline.Visible = true
                                 esp.health.Visible = true
-                                local healthPercentage = player.Character.Humanoid.Health / player.Character.Humanoid.MaxHealth
+                                local CurrentHealth = player.Character and player.Character:FindFirstChild("Humanoid") and player.Character.Humanoid.Health or player:GetAttribute("Health") or 0
+                                local MaxHealth = player.Character and player.Character:FindFirstChild("Humanoid") and player.Character.Humanoid.MaxHealth or player:GetAttribute("Health") or 0
+                                local healthPercentage = CurrentHealth / MaxHealth
                                 esp.healthOutline.From = Vector2.new(boxPosition.X - 6, boxPosition.Y + boxSize.Y)
                                 esp.healthOutline.To = Vector2.new(esp.healthOutline.From.X, esp.healthOutline.From.Y - boxSize.Y)
                                 esp.health.From = Vector2.new((boxPosition.X - 5), boxPosition.Y + boxSize.Y)
-                                esp.health.To = Vector2.new(esp.health.From.X, esp.health.From.Y - (player.Character.Humanoid.Health / player.Character.Humanoid.MaxHealth) * boxSize.Y)
+                                esp.health.To = Vector2.new(esp.health.From.X, esp.health.From.Y - (CurrentHealth / MaxHealth) * boxSize.Y)
                                 esp.health.Color = ESP_SETTINGS.HealthLowColor:Lerp(ESP_SETTINGS.HealthHighColor, healthPercentage)
                             else
                                 esp.healthOutline.Visible = false
