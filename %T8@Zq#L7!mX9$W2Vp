@@ -174,7 +174,7 @@ ESP = {
 
                 if Character and (not ESP.Settings.Teamcheck or (Team and Team ~= Client.Team)) then
                     local RootPart = Character:FindFirstChild("Torso") or Character:FindFirstChild("HumanoidRootPart") or Character:FindFirstChild("Body")
-                    local Head = Character:FindFirstChild("Head")
+                    local Head = Character:FindFirstChild("MouthPart") or Character:FindFirstChild("Body") or Character:FindFirstChild("Head")
                     local Humanoid = Character:FindFirstChild("Humanoid")
                     local IsBehindWall = ESP.Settings.WallCheck and ESP.Functions.IsPlayerBehindWall(Player)
                     local ShouldShow = not IsBehindWall and ESP.Settings.Enabled
@@ -445,5 +445,19 @@ ESP = {
         end,
     }
 }
+
+for _, player in ipairs(Players:GetPlayers()) do
+    if player ~= Client then
+        ESP.Functions.CacheEsp(player)
+    end
+end
+
+Players.PlayerAdded:Connect(function(player)
+    if player ~= Client then
+        ESP.Functions.CacheEsp(player)
+    end
+end)
+
+Players.PlayerRemoving:Connect(ESP.Functions.RemoveEsp)
 
 return ESP
