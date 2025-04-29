@@ -310,13 +310,23 @@ ESP = {
                             if ESP_SETTINGS.ShowHealth and ESP_SETTINGS.Enabled then
                                 esp.healthOutline.Visible = true
                                 esp.health.Visible = true
-                                local CurrentHealth = player.Character and player.Character:FindFirstChild("Humanoid") and player.Character.Humanoid.Health or player:GetAttribute("Health") or 0
-                                local MaxHealth = player.Character and player.Character:FindFirstChild("Humanoid") and player.Character.Humanoid.MaxHealth or player:GetAttribute("Health") or 0
-                                local healthPercentage = CurrentHealth / MaxHealth
+                                
+                                local humanoid = player.Character and player.Character:FindFirstChild("Humanoid")
+                                local CurrentHealth = humanoid and humanoid.Health or player:GetAttribute("Health") or 0
+                                local MaxHealth = humanoid and humanoid.MaxHealth or player:GetAttribute("MaxHealth") or 0
+                            
+                                if MaxHealth == 0 then
+                                    MaxHealth = 1 
+                                end
+                            
+                                local healthPercentage = math.clamp(CurrentHealth / MaxHealth, 0, 1)
+                            
                                 esp.healthOutline.From = Vector2.new(boxPosition.X - 6, boxPosition.Y + boxSize.Y)
                                 esp.healthOutline.To = Vector2.new(esp.healthOutline.From.X, esp.healthOutline.From.Y - boxSize.Y)
+                                
                                 esp.health.From = Vector2.new((boxPosition.X - 5), boxPosition.Y + boxSize.Y)
-                                esp.health.To = Vector2.new(esp.health.From.X, esp.health.From.Y - (CurrentHealth / MaxHealth) * boxSize.Y)
+                                esp.health.To = Vector2.new(esp.health.From.X, esp.health.From.Y - healthPercentage * boxSize.Y)
+                            
                                 esp.health.Color = ESP_SETTINGS.HealthLowColor:Lerp(ESP_SETTINGS.HealthHighColor, healthPercentage)
                             else
                                 esp.healthOutline.Visible = false
@@ -325,7 +335,7 @@ ESP = {
         
                             if ESP_SETTINGS.ShowDistance and ESP_SETTINGS.Enabled then
                                 local distance = (camera.CFrame.p - rootPart.Position).Magnitude
-                                esp.distance.Text = string.format("%.1f studs", distance)
+                                esp.distance.Text = string.format("%.1f s", math.floor(distance))
                                 esp.distance.Position = Vector2.new(boxPosition.X + boxSize.X / 2, boxPosition.Y + boxSize.Y + 5)
                                 esp.distance.Visible = true
                             else
