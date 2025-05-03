@@ -11,7 +11,7 @@ CheckPlaceIDs = function(PlaceIDs)
 end
 
 local Info = {
-    ShouldDisconnect = false,
+    ShouldDisconnect = CheckPlaceIDs({6698800091, 17693782507, 17693765307, 18754149095, 94708661875364},
     DisconnectReason = "Script under maintenance."
 }
 
