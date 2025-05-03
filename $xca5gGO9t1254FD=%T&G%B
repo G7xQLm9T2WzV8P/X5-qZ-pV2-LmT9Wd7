@@ -10,10 +10,6 @@ local function call(konstantType: string, scriptPath: Script | ModuleScript | Lo
         return `-- Failed to get script bytecode, error:\n\n--[[\n{bytecode}\n--]]`
     end
 
-    local time_elapsed = os.clock() - last_call
-    if time_elapsed <= .5 then
-        task.wait(.5 - time_elapsed)
-    end
     local httpResult = request({
         Url = API .. konstantType,
         Body = bytecode,
@@ -22,7 +18,6 @@ local function call(konstantType: string, scriptPath: Script | ModuleScript | Lo
             ["Content-Type"] = "text/plain"
         },
     })
-    last_call = os.clock()
     
     if (httpResult.StatusCode ~= 200) then
         return `-- Error occured while requesting the API, error:\n\n--[[\n{httpResult.Body}\n--]]`
