@@ -1,0 +1,17 @@
+local UpdateInfo = {
+    ["Deadline"] = "Always",
+
+    ["BGS:I"] = "Always",
+
+    ["Criminality"] = "Always",
+
+    ["Universal"] = "Always",
+
+    ["PriorExtinctionLobby"] = 3148,
+    ["PriorExtinctionUpland"] = 243,
+    ["PriorExtinctionJurassic"] = 285,
+    ["PriorExtinctionMixed"] = 260,
+    ["PriorExtinctionLowland"] = 158,
+}
+
+return UpdateInfo
