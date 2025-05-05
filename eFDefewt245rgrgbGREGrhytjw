@@ -8,7 +8,7 @@ local UpdateInfo = {
     ["Universal"] = "Always",
 
     ["PriorExtinctionLobby"] = 3148,
-    ["PriorExtinctionUpland"] = 243,
+    ["PriorExtinctionUpland"] = 245,
     ["PriorExtinctionJurassic"] = 285,
     ["PriorExtinctionMixed"] = 260,
     ["PriorExtinctionLowland"] = 158,
