@@ -9,7 +9,7 @@ local UpdateInfo = {
 
     ["PriorExtinctionLobby"] = 3148,
     ["PriorExtinctionUpland"] = 243,
-    ["PriorExtinctionJurassic"] = 285,
+    ["PriorExtinctionJurassic"] = 284,
     ["PriorExtinctionMixed"] = 260,
     ["PriorExtinctionLowland"] = 158,
 }
