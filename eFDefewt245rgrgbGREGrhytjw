@@ -8,10 +8,10 @@ local UpdateInfo = {
     ["Universal"] = "Always",
 
     ["PriorExtinctionLobby"] = 3149,
-    ["PriorExtinctionUpland"] = 250,
-    ["PriorExtinctionJurassic"] = 292,
-    ["PriorExtinctionMixed"] = 267,
-    ["PriorExtinctionLowland"] = 165,
+    ["PriorExtinctionUpland"] = 251,
+    ["PriorExtinctionJurassic"] = 293,
+    ["PriorExtinctionMixed"] = 268,
+    ["PriorExtinctionLowland"] = 166,
 }
 
 return UpdateInfo
