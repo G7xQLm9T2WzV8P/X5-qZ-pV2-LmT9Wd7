@@ -4,6 +4,8 @@ local Client = Players.LocalPlayer
 local Camera = game.Workspace.CurrentCamera
 local Workspace = game.Workspace
 
+print("hey")
+
 local ESP
 ESP = {
     Settings = {
