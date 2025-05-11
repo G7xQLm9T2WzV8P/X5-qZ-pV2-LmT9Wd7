@@ -20,6 +20,7 @@ ESP = {
         ShowBox = false,
         BoxType = "Corner Box Esp",
         ShowName = false,
+        ShowChams = false,
         ShowHealth = false,
         ShowDistance = false,
         ShowSkeletons = false,
@@ -192,6 +193,21 @@ ESP = {
                             local boxPosition = Vector2.new(math.floor(Hrp2D.X - CharSize * 1.8 / 2), math.floor(Hrp2D.Y - CharSize * 1.6 / 2))
 
                             local hrp2D = Hrp2D
+
+                            if ESP_SETTINGS.ShowChams and ESP_SETTINGS.Enabled then
+                            if not esp.highlight then
+                                esp.highlight = Instance.new("Highlight")
+                                esp.highlight.Parent = Character
+                                esp.highlight.FillTransparency = 0  
+                                esp.highlight.FillColor = Color3.fromHex("#a49ae6")
+                                esp.highlight.OutlineTransparency = 1  
+                            end
+                            esp.highlight.Enabled = true  
+                        else
+                            if esp.highlight then
+                                esp.highlight.Enabled = false  
+                            end
+                        end
         
                             if ESP_SETTINGS.ShowName and ESP_SETTINGS.Enabled then
                                 esp.name.Visible = true
