@@ -429,7 +429,13 @@ ESP = {
                             end
                         else
                             for _, drawing in pairs(esp) do
-                                drawing.Visible = false
+                                if drawing.Visible then
+                                    drawing.Visible = false
+                                end
+
+                                if drawing.Enabled then
+                                    drawing.Enabled = false
+                                end
                             end
                             for _, lineData in ipairs(esp["skeletonlines"]) do
                                 local skeletonLine = lineData[1]
