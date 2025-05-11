@@ -18,7 +18,7 @@ ESP = {
         WallCheck = false,
         Enabled = false,
         ShowBox = false,
-        BoxType = "Corner Box Esp",
+        BoxType = "2D",
         ShowName = false,
         ShowChams = false,
         ShowTool = false,
@@ -30,6 +30,9 @@ ESP = {
         TracerThickness = 2,
         SkeletonsColor = Color3.new(1, 1, 1),
         TracerPosition = "Bottom",
+        Maps = {
+
+        }
     },
 
     Cache = {},
@@ -125,7 +128,7 @@ ESP = {
                     Font = Drawing.Fonts.Monospace
                 }),
 
-                toolname = FunctionDirectory.CreateDrawing("Text", {
+                 = FunctionDirectory.CreateDrawing("Text", {
                     Color = Color3.new(1, 1, 1),
                     Size = 13.5,
                     Outline = true,
@@ -369,11 +372,11 @@ ESP = {
 
                             if ESP_SETTINGS.ShowTool and ESP_SETTINGS.Enabled then
                                 local tool = Character:FindFirstChildOfClass("Tool")
-                                esp.toolname.Text = tool and tool.Name or ""
-                                esp.toolname.Position = Vector2.new(boxPosition.X + boxSize.X / 2, boxPosition.Y + boxSize.Y + 7.5)
-                                esp.toolname.Visible = true
+                                esp.Text = tool and (ESP_SETTINGS.Maps[tool.Name] or tool.Name) or ""
+                                esp.Position = Vector2.new(boxPosition.X + boxSize.X / 2, boxPosition.Y + boxSize.Y + 7.5)
+                                esp.Visible = true
                             else
-                                esp.toolname.Visible = false
+                                esp.Visible = false
                             end
         
                             if ESP_SETTINGS.ShowSkeletons and ESP_SETTINGS.Enabled then
