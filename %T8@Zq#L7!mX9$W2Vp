@@ -373,7 +373,7 @@ ESP = {
                             if ESP_SETTINGS.ShowTool and ESP_SETTINGS.Enabled then
                                 local tool = Character:FindFirstChildOfClass("Tool")
                                 esp.tool.Text = tool and (ESP_SETTINGS.Maps[tool.Name] or tool.Name) or ""
-                                esp.tool.Position = Vector2.new(boxPosition.X + boxSize.X / 2, boxPosition.Y + boxSize.Y + 7.5)
+                                esp.tool.Position = Vector2.new(boxPosition.X + boxSize.X / 2, boxPosition.Y + boxSize.Y + 15)
                                 esp.tool.Visible = true
                             else
                                 esp.tool.Visible = false
