@@ -431,7 +431,7 @@ ESP = {
                             for _, drawing in pairs(esp) do
                                 if typeof(drawing) == "Instance" and drawing:IsA("Highlight") then
                                     drawing.Enabled = false
-                                elseif type(drawing) == "table" and drawing.Visible ~= nil then
+                                else
                                     drawing.Visible = false
                                 end
                             end
