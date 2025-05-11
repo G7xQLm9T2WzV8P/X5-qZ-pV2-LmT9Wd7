@@ -429,12 +429,10 @@ ESP = {
                             end
                         else
                             for _, drawing in pairs(esp) do
-                                if drawing.Visible then
-                                    drawing.Visible = false
-                                end
-
-                                if drawing.Enabled then
+                                if drawing:IsA("Highlight") then
                                     drawing.Enabled = false
+                                else
+                                    drawing.Visible = false
                                 end
                             end
                             for _, lineData in ipairs(esp["skeletonlines"]) do
