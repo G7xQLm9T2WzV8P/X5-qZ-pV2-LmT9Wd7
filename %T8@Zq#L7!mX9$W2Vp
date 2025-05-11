@@ -446,7 +446,9 @@ ESP = {
                             esp.boxLines = {}
                         end
                     else
-                        for _, drawing in pairs(esp) do
+                        if typeof(drawing) == "Instance" and drawing:IsA("Highlight") then
+                            drawing.Enabled = false
+                        else
                             drawing.Visible = false
                         end
                         for _, lineData in ipairs(esp["skeletonlines"]) do
@@ -460,7 +462,9 @@ ESP = {
                         esp.boxLines = {}
                     end
                 else
-                    for _, drawing in pairs(esp) do
+                    if typeof(drawing) == "Instance" and drawing:IsA("Highlight") then
+                        drawing.Enabled = false
+                    else
                         drawing.Visible = false
                     end
                     for _, lineData in ipairs(esp["skeletonlines"]) do
