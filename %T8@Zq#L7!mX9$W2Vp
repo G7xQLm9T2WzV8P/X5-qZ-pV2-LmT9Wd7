@@ -21,6 +21,7 @@ ESP = {
         BoxType = "Corner Box Esp",
         ShowName = false,
         ShowChams = false,
+        ShowTool = false,
         ShowHealth = false,
         ShowDistance = false,
         ShowSkeletons = false,
@@ -454,10 +455,12 @@ ESP = {
                             esp.boxLines = {}
                         end
                     else
-                        if typeof(drawing) == "Instance" and drawing:IsA("Highlight") then
-                            drawing.Enabled = false
-                        else
-                            drawing.Visible = false
+                        for _, drawing in pairs(esp) do
+                            if typeof(drawing) == "Instance" and drawing:IsA("Highlight") then
+                                drawing.Enabled = false
+                            else
+                                drawing.Visible = false
+                            end
                         end
                         for _, lineData in ipairs(esp["skeletonlines"]) do
                             local skeletonLine = lineData[1]
@@ -470,10 +473,12 @@ ESP = {
                         esp.boxLines = {}
                     end
                 else
-                    if typeof(drawing) == "Instance" and drawing:IsA("Highlight") then
-                        drawing.Enabled = false
-                    else
-                        drawing.Visible = false
+                    for _, drawing in pairs(esp) do
+                        if typeof(drawing) == "Instance" and drawing:IsA("Highlight") then
+                            drawing.Enabled = false
+                        else
+                            drawing.Visible = false
+                        end
                     end
                     for _, lineData in ipairs(esp["skeletonlines"]) do
                         local skeletonLine = lineData[1]
