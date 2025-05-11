@@ -1,8 +1,8 @@
+
 local Players = game:GetService("Players")
 local Client = Players.LocalPlayer
 local Camera = game.Workspace.CurrentCamera
 local Workspace = game.Workspace
-
 
 local ESP
 ESP = {
@@ -128,7 +128,7 @@ ESP = {
                     Font = Drawing.Fonts.Monospace
                 }),
 
-                 = FunctionDirectory.CreateDrawing("Text", {
+                tool = FunctionDirectory.CreateDrawing("Text", {
                     Color = Color3.new(1, 1, 1),
                     Size = 13.5,
                     Outline = true,
