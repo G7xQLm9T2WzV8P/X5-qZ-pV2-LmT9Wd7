@@ -372,11 +372,11 @@ ESP = {
 
                             if ESP_SETTINGS.ShowTool and ESP_SETTINGS.Enabled then
                                 local tool = Character:FindFirstChildOfClass("Tool")
-                                esp.Text = tool and (ESP_SETTINGS.Maps[tool.Name] or tool.Name) or ""
-                                esp.Position = Vector2.new(boxPosition.X + boxSize.X / 2, boxPosition.Y + boxSize.Y + 7.5)
-                                esp.Visible = true
+                                esp.tool.Text = tool and (ESP_SETTINGS.Maps[tool.Name] or tool.Name) or ""
+                                esp.tool.Position = Vector2.new(boxPosition.X + boxSize.X / 2, boxPosition.Y + boxSize.Y + 7.5)
+                                esp.tool.Visible = true
                             else
-                                esp.Visible = false
+                                esp.tool.Visible = false
                             end
         
                             if ESP_SETTINGS.ShowSkeletons and ESP_SETTINGS.Enabled then
@@ -451,13 +451,15 @@ ESP = {
                                 esp.tracer.Visible = false
                             end
                         else
+                            pcall(function()
                             for _, drawing in pairs(esp) do
                                 if typeof(drawing) == "Instance" and drawing:IsA("Highlight") then
                                     drawing.Enabled = false
                                 else
                                     drawing.Visible = false
                                 end
-                            end
+                            end                                
+                            end)
                             for _, lineData in ipairs(esp["skeletonlines"]) do
                                 local skeletonLine = lineData[1]
                                 skeletonLine:Remove()
@@ -469,13 +471,15 @@ ESP = {
                             esp.boxLines = {}
                         end
                     else
+                        pcall(function()
                         for _, drawing in pairs(esp) do
                             if typeof(drawing) == "Instance" and drawing:IsA("Highlight") then
                                 drawing.Enabled = false
                             else
                                 drawing.Visible = false
                             end
-                        end
+                        end                                
+                        end)
                         for _, lineData in ipairs(esp["skeletonlines"]) do
                             local skeletonLine = lineData[1]
                             skeletonLine:Remove()
@@ -487,13 +491,15 @@ ESP = {
                         esp.boxLines = {}
                     end
                 else
+                    pcall(function()
                     for _, drawing in pairs(esp) do
                         if typeof(drawing) == "Instance" and drawing:IsA("Highlight") then
                             drawing.Enabled = false
                         else
                             drawing.Visible = false
                         end
-                    end
+                    end                                
+                    end)
                     for _, lineData in ipairs(esp["skeletonlines"]) do
                         local skeletonLine = lineData[1]
                         skeletonLine:Remove()
