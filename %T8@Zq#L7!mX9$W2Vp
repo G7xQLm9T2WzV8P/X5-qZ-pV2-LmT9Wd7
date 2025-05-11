@@ -125,6 +125,14 @@ ESP = {
                     Font = Drawing.Fonts.Monospace
                 }),
 
+                toolname = FunctionDirectory.CreateDrawing("Text", {
+                    Color = Color3.new(1, 1, 1),
+                    Size = 13.5,
+                    Outline = true,
+                    Center = true,
+                    Font = Drawing.Fonts.Monospace
+                }),
+
                 boxLines = {}
             }
 
@@ -360,11 +368,11 @@ ESP = {
                             end
 
                             if ESP_SETTINGS.ShowTool and ESP_SETTINGS.Enabled then
-                                esp.tool.Text = Character:FindFirstChildOfClass("Tool") and Character:FindFirstChildOfClass("Tool").Name or ""
-                                esp.tool.Position = Vector2.new(boxPosition.X + boxSize.X / 2, boxPosition.Y + boxSize.Y + 7.5)
-                                esp.tool.Visible = true
+                                esp.toolname.Text = Character:FindFirstChildOfClass("Tool") and Character:FindFirstChildOfClass("Tool").Name or ""
+                                esp.toolname.Position = Vector2.new(boxPosition.X + boxSize.X / 2, boxPosition.Y + boxSize.Y + 7.5)
+                                esp.toolname.Visible = true
                             else
-                                esp.tool.Visible = false
+                                esp.toolname.Visible = false
                             end
         
                             if ESP_SETTINGS.ShowSkeletons and ESP_SETTINGS.Enabled then
