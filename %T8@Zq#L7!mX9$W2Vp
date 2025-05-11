@@ -357,6 +357,14 @@ ESP = {
                             else
                                 esp.distance.Visible = false
                             end
+
+                            if ESP_SETTINGS.ShowTool and ESP_SETTINGS.Enabled then
+                                esp.tool.Text = Character:FindFirstChildOfClass("Tool") and Character:FindFirstChildOfClass("Tool").Name or ""
+                                esp.tool.Position = Vector2.new(boxPosition.X + boxSize.X / 2, boxPosition.Y + boxSize.Y + 7.5)
+                                esp.tool.Visible = true
+                            else
+                                esp.tool.Visible = false
+                            end
         
                             if ESP_SETTINGS.ShowSkeletons and ESP_SETTINGS.Enabled then
                                 if #esp["skeletonlines"] == 0 then
