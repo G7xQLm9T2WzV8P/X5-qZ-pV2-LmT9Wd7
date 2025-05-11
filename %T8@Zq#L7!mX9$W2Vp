@@ -368,7 +368,7 @@ ESP = {
                                 esp.distance.Text = string.format("%.1f s", math.floor(distance))
                                 esp.distance.Position = Vector2.new(boxPosition.X + boxSize.X / 2, nextY)
                                 esp.distance.Visible = true
-                                nextY = nextY + 50 
+                                nextY = nextY + 15 
                             else
                                 esp.distance.Visible = false
                             end
