@@ -8,6 +8,7 @@ local ClosureBindings = {
     function()local wax,script,require=ImportGlobals(1)local ImportGlobals return (function(...)local Bundles = require(script.Bundles)
 local data = Bundles.data
 local theme = Bundles.themeSystem
+local icons = Bundles.icons
 local services = Bundles.services
 local HttpService = services.HttpService
 local RunService = services.RunService
@@ -31,7 +32,7 @@ local LPH_NO_VIRTUALIZE = LPH_NO_VIRTUALIZE or function(v)
 end
 
 -- VERSION
-local VERSION = "1.4.0"
+local VERSION = "1.5.0"
 -- VERSION
 
 local function addComponent(name, parent, properties)
@@ -82,6 +83,9 @@ function createSide(tab, parent)
 		end
 		return tabs
 	end
+	function components:ButtonGroup()
+			return addComponent("buttongroup", components.Parent, {tab = tab})
+		end
 	function components:List(name, canClose)
 		local listModule, visible, _name = addComponent("list", components.Parent, {Name = name, CanClose = canClose})
 		local returnTable = createSide("list?", listModule)
@@ -161,19 +165,17 @@ function chrono:Window(windowProperty)
 
 	setWarnTitle(windowProperty.Title)
 
-	-- Theme
-
-	theme.create(windowProperty.Theme or {})
-
 	-- Data
 
 	data.add({string = ""}, "selectedTab")
 	data.add({boolean = false}, "isFirst")
+	local setTheme = data.add({tbl = {}}, "setTheme")
 	local visible = data.add({boolean = true}, "visible")
 	local offset = data.add({number = windowProperty.Offset or 58}, "offset")
 	data.add({name = randomString(32)}, "instanceName")
 	data.add({binds = {}}, "currentBinds")
 	data.add({bindData = {}}, "bindData")
+	data.add({boolean = false}, "isMobile")
 	local hideBind = data.add({bind = windowProperty.HideBind}, "HideBind")
 	local capturing = data.add({boolean = false, instance = ""}, "capturing")
 	data.add({number = windowProperty.componentY or 32}, "componentY")
@@ -218,14 +220,10 @@ function chrono:Window(windowProperty)
 	end)
 	connections.add(keybindConnection)
 
-	-- Flags
+	-- Files
 
-	local config
 	if windowProperty.UseConfig then
-		useConfig:update("boolean", windowProperty.UseConfig)
-		config = windowProperty.Config
-
-		local path = {"chrono",`/{config}`}
+		local path = {"chrono",`/{windowProperty.Workspace}`}
 		local built = ""
 		for i=1,#path do
 			built = built..path[i]
@@ -233,12 +231,57 @@ function chrono:Window(windowProperty)
 				customFunctions.makefolder(built)
 			end
 		end
-		chrono.Folder = built
-		config = built.."/config.json"
-		chrono.File = config
-		if not customFunctions.isfile(config) then
-			customFunctions.writefile(config, "{}")
+		flagCreator.writeFiles = true
+		flagCreator.path = `chrono/{windowProperty.Workspace}`
+		chrono.Folder = `chrono/{windowProperty.Workspace}`
+	end
+	local path = {"chrono",`/themes`}
+	local built = ""
+	for i=1,#path do
+		built = built..path[i]
+		if not customFunctions.isfolder(built) then
+			customFunctions.makefolder(built)
 		end
+	end
+	theme.path = `chrono/themes`
+
+	-- Themes
+
+	theme.init()
+	local defaultTheme = theme.getTheme().uid
+	if windowProperty.Theme then
+		didPass, failedItems = typecheck(windowProperty.Theme, {
+			Name = "",
+			Colors = {}
+		})
+		assert(didPass, table.concat(failedItems, "\n"))
+		setTheme:update("tbl", windowProperty.Theme)
+		task.wait()
+		theme.set(theme.create(windowProperty.Theme.Name, windowProperty.Theme.Colors, nil, nil, true))
+	end
+
+	-- Configs
+
+	--[[local hasAutoload = flagCreator.init()
+	if windowProperty.Configuration then
+		didPass, failedItems = typecheck(windowProperty.Configuration, {
+			Name = "",
+			FlagValues = {}
+		})
+		assert(didPass, table.concat(failedItems, "\n"))
+		local uid = flagCreator.create(windowProperty.Configuration.Name, nil, nil, windowProperty.Configuration.FlagValues, true, windowProperty.Configuration.Lock, windowProperty.Configuration.AutoLoad)
+		if not hasAutoload then
+			flagCreator.set(uid)
+			for i,v in windowProperty.Configuration.FlagValues do
+				flagCreator.preregister(i, v)
+			end
+		end
+	end]]
+
+	-- Flags
+
+	if windowProperty.UseConfig then
+		useConfig:update("boolean", windowProperty.UseConfig)
 	end
 
 	chrono.flags = {}
@@ -288,19 +331,6 @@ function chrono:Window(windowProperty)
 	function chrono:Announce(properties)
 		return addComponent("announcement", references.get("container"), properties)
 	end
-	function chrono:LoadConfig()
-		if not windowProperty.UseConfig then
-			return
-		end
-		flagCreator.load(HttpService:JSONDecode(customFunctions.readfile(config)))
-		flagCreator.config:set(config)
-		configLoaded:update("boolean", true)
-	end
-	function chrono:SetTheme(newTheme)
-		local _didPass, _failedItems = typecheck({['New Theme'] = newTheme}, {['New Theme'] = {}})
-		assert(_didPass, table.concat(_failedItems, "\n"))
-		theme.create(newTheme)
-	end
 	function chrono:ResetLaunchTime()
 		data.find("launchTime"):update("number", tick())
 	end
@@ -308,7 +338,595 @@ function chrono:Window(windowProperty)
 		get(logFunction.func)("normal", props)
 	end
 	chrono.Version = VERSION
-	chrono.Stats = createSide("stats", references.get("stats"))
+	chrono.Settings = createSide("settings", references.get("settings"))
+
+	function chrono:SetTheme(uid)
+		local _didPass, _failedItems = typecheck({['New Theme'] = uid}, {['New Theme'] = ""})
+		assert(_didPass, table.concat(_failedItems, "\n"))
+
+		if theme.find(uid) then
+			theme.set(uid)
+		end
+	end
+	function chrono:GetThemeUID()
+		return theme.getTheme().uid
+	end
+	function chrono:ImportTheme(...)
+		local args = {...}
+		if #args == 1 then
+			didPass, failedItems = typecheck(args,{[1] = {}},{})
+			assert(didPass, table.concat(failedItems, "\n"))
+			return theme.create(`Import_{randomString(5)}`, args[1])
+		elseif #args == 2 then
+			didPass, failedItems = typecheck(args,{[1] = "",[2] = {}},{})
+			assert(didPass, table.concat(failedItems, "\n"))
+			return theme.create(args[1], args[2])
+		end
+	end
+	function chrono:ExportTheme()
+		return theme.export()
+	end
+
+	function chrono:SetConfiguration(uid)
+		flagCreator.set(uid)
+	end
+	function chrono:GetConfigurationUID()
+		return flagCreator.getConfig().uid
+	end
+	function chrono:ImportConfiguration(...)
+		local args = {...}
+		if #args == 1 then
+			didPass, failedItems = typecheck(args,{[1] = {}},{})
+			assert(didPass, table.concat(failedItems, "\n"))
+			return flagCreator.create(`Import_{randomString(5)}`, nil, nil, args[1])
+		elseif #args == 2 then
+			didPass, failedItems = typecheck(args,{[1] = "",[2] = {}},{})
+			assert(didPass, table.concat(failedItems, "\n"))
+			return flagCreator.create(args[1], nil, nil, args[2])
+		end
+	end
+	function chrono:ExportConfiguration()
+		return flagCreator.export()
+	end
+	function chrono:GetConfigurations()
+		return flagCreator.getConfigs()
+	end
+	function chrono:AutoLoadConfiguration(uid)
+		flagCreator.setAutoload(uid, true)
+	end
+	function chrono:CreateSettings()
+		local _settings = chrono.Settings
+
+		-- Theme Manager
+
+		do
+			_settings:Label("Theme Manager", true)
+			local themeTable = theme.getTheme().palette
+			local cachedTheme = {}
+			local colorNames = {}
+			local savedThemesNames = {}
+			table.foreach(themeTable,function(i)
+				table.insert(colorNames, i)
+			end)
+			table.foreach(theme.getThemes(), function(_, _theme)
+				table.insert(savedThemesNames, {
+					DisplayValue = _theme.name,
+					Value = _theme.uid
+				})
+			end)
+
+			local _name = ""
+			local _colorPicker,_reset,_themeNames,_delete,_save,_changeName,_confirmName
+			local isToggledE = false
+			local displayReset = false
+			local function editToggle(value)
+				if value then
+					_themeNames:Visible()
+					_colorPicker:Visible()
+					if displayReset then
+						_reset:Visible()
+					end
+					if theme.getTheme().uid ~= "original" then
+						_changeName:Visible()
+						_confirmName:Visible()
+					else
+						_changeName:Invisible()
+						_confirmName:Invisible()
+					end
+				else
+					_reset:Invisible()
+					_colorPicker:Invisible()
+					_themeNames:Invisible()
+					_changeName:Invisible()
+					_confirmName:Invisible()
+				end
+			end
+
+			local savedThemesDD = _settings:Dropdown({
+				Name = "Current Theme",
+				Items = savedThemesNames,
+				Default = theme.getTheme().uid,
+				Callback = function(uid)
+					theme.set(uid)
+					if _colorPicker and _name ~= "" then
+						_colorPicker:SetColor(theme.get(_name))
+					end
+					if uid == "original" and _delete then
+						_delete:Disable()
+					elseif uid ~= "original" and _delete then
+						_delete:Enable()
+					end
+					if uid == "original" and _save then
+						_save:Disable()
+					elseif uid ~= "original" and _save then
+						_save:Enable()
+					end
+					if _confirmName then
+						editToggle(isToggledE)
+					end
+				end
+			})
+			local function refreshThemes(value:string?)
+				table.clear(savedThemesNames)
+				table.foreach(theme.getThemes(), function(_, _theme)
+					table.insert(savedThemesNames, {
+						DisplayValue = _theme.name,
+						Value = _theme.uid
+					})
+				end)
+				savedThemesDD:SetItems(savedThemesNames)
+				if value then
+					savedThemesDD:SelectItem(value)
+				end
+			end
+
+			theme.onChange(function()
+				savedThemesDD:SelectItem(theme.getTheme().uid)
+				table.clear(cachedTheme)
+				table.foreach(theme.getTheme().palette, function(i,v)
+					cachedTheme[i] = v
+				end)
+			end)
+			theme.onCreate(function()
+				refreshThemes()
+			end)
+
+			local themeGroup = _settings:ButtonGroup()
+			local isToggledC = false
+			local _nameTheme,_createTheme,_cancelTheme
+			local function createToggle(value)
+				if value then
+					_nameTheme:Visible()
+					_createTheme:Visible()
+					_cancelTheme:Visible()
+				else
+					_nameTheme:Invisible()
+					_createTheme:Invisible()
+					_cancelTheme:Invisible()
+				end
+			end
+
+			-- Edit Button
+
+			themeGroup:Button({
+				Name = "Edit",
+				Callback = function()
+					isToggledC = false
+					createToggle(false)
+					isToggledE = not isToggledE
+					editToggle(isToggledE)
+				end
+			})
+
+			_themeNames = _settings:Dropdown({
+				Name = "Colors",
+				Visible = false,
+				Items = colorNames,
+				Callback = function(v)
+					_name = v
+					_colorPicker:SetColor(theme.get(_name))
+					_colorPicker:Enable()
+					_colorPicker:SetName(`Editing: {_name}`)
+				end
+			})
+			_colorPicker = _settings:ColorPicker({
+				Name = "Editing Color: ",
+				Enabled = false,
+				Visible = false,
+				DisabledText = "Select Color First!",
+				HideTransparency = true,
+				Callback = function(color)
+					local currentTheme = theme.getTheme().palette
+					if currentTheme[_name]:ToHex() ~= color:ToHex() then
+						displayReset = true
+						_reset:Visible()
+					else
+						_reset:Invisible()
+						displayReset = false
+					end
+					theme.edit(_name, color)
+				end
+			})
+			_reset = _settings:Button({
+				Name = "Reset Color",
+				Visible = false,
+				Callback = function()
+					displayReset = false
+					_colorPicker:SetColor(cachedTheme[_name])
+					_reset:Invisible()
+				end
+			})
+			local newName = ""
+			_changeName = _settings:TextBox({
+				Name = "New Name",
+				Visible = false,
+				Callback = function(v)
+					newName = v
+				end
+			})
+			_confirmName = _settings:Button({
+				Name = "Set Name",
+				Visible = false,
+				Callback = function()
+					theme.editTheme(theme.getTheme().uid, "name", newName)
+					refreshThemes()
+					_changeName:SetInput("")
+				end
+			})
+
+			-- Create Button
+
+			local _themeName = ""
+			themeGroup:Button({
+				Name = "Create",
+				Callback = function()
+					isToggledE = false
+					editToggle(false)
+					isToggledC = not isToggledC
+					createToggle(isToggledC)
+				end
+			})
+
+			_nameTheme = _settings:TextBox({
+				Name = "Name your theme",
+				Visible = false,
+				Callback = function(v)
+					_themeName = v
+				end
+			})
+			_createTheme = _settings:Button({
+				Name = "Create theme",
+				Visible = false,
+				Callback = function()
+					if _themeName == "" then
+						chrono:Notify({
+							Title = windowProperty.Title,
+							Body = "Theme name cannot be empty!",
+							Duration = 3,
+							Image = icons.alert,
+							ImageColor = theme.get("red")
+						})
+						return
+					end
+					local newTheme = theme.create(_themeName, theme.getColors())
+					local response = {theme.set(newTheme)}
+
+					if response[1] then
+						refreshThemes(newTheme)
+						isToggledC = false
+						createToggle(isToggledC)
+					end
+				end
+			})
+			_cancelTheme = _settings:Button({
+				Name = "Cancel",
+				Visible = false,
+				Callback = function()
+					isToggledC = false
+					createToggle(isToggledC)
+					_nameTheme:SetInput("")
+				end
+			})
+
+			-- Save Button
+
+			_save = themeGroup:Button({
+				Name = "Save",
+				DisabledText = "Disabled",
+				Callback = function()
+					local response = theme.save(theme.getTheme().uid)
+					if response then
+						task.wait()
+						local currentTheme = theme.getTheme().palette
+						if currentTheme[_name]:ToHex() ~= cachedTheme[_name]:ToHex() then
+							displayReset = true
+							_reset:Visible()
+						else
+							_reset:Invisible()
+							displayReset = false
+						end
+						chrono:Notify({
+							Title = windowProperty.Title,
+							Body = `Saved theme with uid "{theme.getTheme().uid}"`,
+							Duration = 3,
+							Image = icons.check
+						})
+					else
+						chrono:Notify({
+							Title = "Theme Manager Error",
+							Body = `Couldn't find/save theme with uid "{theme.getTheme().uid}"`,
+							Duration = 3,
+							Image = icons.alert,
+							ImageColor = theme.get("red")
+						})
+					end
+				end
+			})
+
+			-- Delete Button
+
+			_delete = themeGroup:Button({
+				Name = "Delete",
+				DisabledText = "Disabled",
+				Callback = function()
+					local response = {theme.find(theme.getTheme().uid)}
+					if response[1] then
+						local _theme = response[2]
+						theme.delete(_theme.uid)
+						refreshThemes(defaultTheme)
+						chrono:Notify({
+							Title = windowProperty.Title,
+							Body = `Deleted theme with uid "{_theme.uid}"`,
+							Duration = 3,
+							Image = icons.check
+						})
+					else
+						chrono:Notify({
+							Title = "Theme Manager Error",
+							Body = `Couldn't find theme with uid "{theme.getTheme().uid}"`,
+							Duration = 3,
+							Image = icons.alert,
+							ImageColor = theme.get("red")
+						})
+					end
+				end
+			})
+		end
+
+		-- Configuration Manager
+
+		if windowProperty.UseConfig then
+			_settings:Label("Configuration Manager", true)
+			local configNames = {}
+			table.foreach(flagCreator.getConfigs(), function(_, _config)
+				table.insert(configNames, {
+					DisplayValue = _config.name,
+					Value = _config.uid
+				})
+			end)
+			local selectedConfig = ""
+			local isBeingAutoSet = true
+			local _save, _delete,autoload
+
+			local configs = _settings:Dropdown({
+				Name = "Configs",
+				Items = configNames,
+				Default = flagCreator.getConfig().uid,
+				AlwaysOpen = true,
+				Callback = function(uid)
+					selectedConfig = uid
+					local config = flagCreator.find(uid)
+					if not config then
+						_delete:Enable()
+						_save:Enable()
+						return
+					end
+					isBeingAutoSet = true
+					autoload:SetValue(config.autoload)
+					isBeingAutoSet = false
+					if config.lock and _delete then
+						_delete:Disable()
+						_save:Disable()
+					elseif not config.lock and _delete then
+						_delete:Enable()
+						_save:Enable()
+					end
+				end
+			})
+			local configButtons = _settings:ButtonGroup()
+			configButtons:Button({
+				Name = "Load",
+				Callback = function()
+					if selectedConfig ~= "" then
+						flagCreator.set(selectedConfig)
+						local _config = flagCreator.find(selectedConfig)
+						chrono:Notify({
+							Title = windowProperty.Title,
+							Body = `Set configuration to "{_config.name}"`,
+							Duration = 3,
+							Image = icons.check
+						})
+					else
+						chrono:Notify({
+							Title = "Configuration Error",
+							Body = "No configuration selected",
+							Duration = 3,
+							Image = icons.alert,
+							ImageColor = theme.get("red")
+						})
+					end
+				end
+			})
+			local function refreshConfigList(value)
+				table.clear(configNames)
+				table.foreach(flagCreator.getConfigs(), function(_, _config)
+					table.insert(configNames, {
+						DisplayValue = _config.name,
+						Value = _config.uid
+					})
+				end)
+				configs:SetItems(configNames)
+				if value then
+					configs:SelectItem(value)
+				end
+				if autoload then
+					isBeingAutoSet = true
+					autoload:SetValue(flagCreator.getConfig().autoload)
+					isBeingAutoSet = false
+				end
+			end
+			flagCreator.onCreate(refreshConfigList)
+			flagCreator.onSelect(refreshConfigList)
+
+			-- Create
+
+			local createA, createB, createC
+			local configName = ""
+			configButtons:Button({
+				Name = "Create",
+				Callback = function()
+					configButtons:Invisible()
+					configs:Invisible()
+					autoload:Invisible()
+					createA:Visible()
+					createB:Visible()
+					createC:Visible()
+				end
+			})
+
+			createA = _settings:TextBox({
+				Visible = false,
+				Name = "Name your configuration",
+				Callback = function(name)
+					configName = name
+				end
+			})
+			createB = _settings:Button({
+				Visible = false,
+				Name = "Complete new configuration",
+				Callback = function()
+					if configName ~= "" then
+						flagCreator.create(configName, nil, false, nil)
+
+						refreshConfigList()
+
+						configButtons:Visible()
+						configs:Visible()
+						autoload:Visible()
+						createA:Invisible()
+						createB:Invisible()
+						createC:Invisible()
+
+						chrono:Notify({
+							Title = windowProperty.Title,
+							Body = `Created "{configName}"`,
+							Duration = 3,
+							Image = icons.check
+						})
+						createA:SetInput("")
+					else
+						chrono:Notify({
+							Title = "Configuration Error",
+							Body = "Name cannot be empty",
+							Duration = 3,
+							Image = icons.alert,
+							ImageColor = theme.get("red")
+						})
+					end
+				end
+			})
+			createC = _settings:Button({
+				Visible = false,
+				Name = "Cancel",
+				Callback = function()
+					configButtons:Visible()
+					configs:Visible()
+					autoload:Visible()
+					createA:Invisible()
+					createB:Invisible()
+					createC:Invisible()
+					createA:SetInput("")
+				end
+			})
+
+			-- Save
+
+			_save = configButtons:Button({
+				Name = "Save",
+				DisabledText = "Disabled",
+				Callback = function()
+					if selectedConfig ~= "" then
+						flagCreator.save(selectedConfig)
+						local _config = flagCreator.find(selectedConfig)
+						chrono:Notify({
+							Title = windowProperty.Title,
+							Body = `Saved configuration "{_config.name}"`,
+							Duration = 3,
+							Image = icons.check
+						})
+					else
+						chrono:Notify({
+							Title = "Configuration Error",
+							Body = "No configuration selected",
+							Duration = 3,
+							Image = icons.alert,
+							ImageColor = theme.get("red")
+						})
+					end
+				end
+			})
+
+			-- Delete
+
+			_delete = configButtons:Button({
+				Name = "Delete",
+				DisabledText = "Disabled",
+				Callback = function()
+					if selectedConfig == "" then
+						chrono:Notify({
+							Title = "Configuration Error",
+							Body = "No configuration selected",
+							Duration = 3,
+							Image = icons.alert,
+							ImageColor = theme.get("red")
+						})
+						return
+					end
+					flagCreator.delete(selectedConfig)
+					refreshConfigList()
+				end
+			})
+
+			-- Autoload
+
+			autoload = _settings:Toggle({
+				Name = "Auto Load Configuration",
+				DisabledText = "Disabled",
+				Default = flagCreator.getConfig().autoload,
+				Callback = function(boolean)
+					if isBeingAutoSet then
+						return
+					end
+					flagCreator.setAutoload(selectedConfig, boolean)
+				end
+			})
+			isBeingAutoSet = false
+		end
+		--[[
+		_settings:Button({
+			Name = "files",
+			Callback = function()
+				customFunctions.printFileSystem()
+
+			end
+		})
+		_settings:Button({
+			Name = "configs",
+			Callback = function()
+				print(flagCreator.getConfigs())
+			end
+		})]]
+	end
 
 
 
@@ -4057,25 +4675,28 @@ local services = require(script.Parent).services
 local HttpService = services.HttpService
 local fusion = require(script.Parent).Fusion
 local observe = fusion.Observer
-local value = fusion.Value
-local connections = require(script.Parent.Parent.utilities).connections
-local customFunctions = require(script.Parent.Parent.utilities).customFunctions
+
+local utilities = require(script.Parent.Parent.utilities)
+local connections = utilities.connections
+local customFunctions = utilities.customFunctions
+local randomString = utilities.randomString
 
 local funcs = {}
-local flags = data.add({list = {}}, "flags")
+local flags = data.add({list = {}},"flags")
 local names = {}
 local preregistered = {}
+local functionsOnCreate = {}
+local functionsOnSelect = {}
+local configs = {}
+local potentialFromFiles = {}
+funcs.currentConfig = {}
+funcs.writeFiles = false
+funcs.path = ""
 
 local types = {
     ['toggle'] = function(flag)
         local boolean = flag.status.boolean
         connections.add(observe(boolean):onChange(function()
-            if not flag.private then
-                task.spawn(funcs.export)
-            end
-            if not get(flag.status.ready) then
-                return
-            end
             local cValue = get(boolean)
             flag.user.Value = cValue
             flag.bindableEvent:Fire(cValue)
@@ -4084,20 +4705,14 @@ local types = {
     ['dropdown'] = function(flag)
         local observable = flag.status.multiselect and flag.status.items or flag.status.item
         connections.add(observe(observable):onChange(function()
-            if not flag.private then
-                task.spawn(funcs.export)
-            end
             local cValue = get(observable)
             flag.user.Value = cValue
             flag.bindableEvent:Fire(cValue)
         end))
     end,
     ['keybind'] = function(flag)
-        local observable = flag.status.keycode
+        local observable = flag.status.mobile and flag.status.coordinate or flag.status.keycode
         connections.add(observe(observable):onChange(function()
-            if not flag.private then
-                task.spawn(funcs.export)
-            end
             local cValue = get(observable)
             flag.user.Value = cValue
             flag.bindableEvent:Fire(cValue)
@@ -4106,9 +4721,6 @@ local types = {
     ['slider'] = function(flag)
         local percentageOf = flag.status.percentageOf
         connections.add(observe(percentageOf):onChange(function()
-            if not flag.private then
-                task.spawn(funcs.export)
-            end
             local cValue = get(percentageOf)
             flag.user.Value = cValue
             flag.bindableEvent:Fire(cValue)
@@ -4117,9 +4729,6 @@ local types = {
     ['textbox'] = function(flag)
         local correctText = flag.status.correctText
         connections.add(observe(correctText):onChange(function()
-            if not flag.private then
-                task.spawn(funcs.export)
-            end
             local cValue = get(correctText)
             flag.user.Value = cValue
             flag.bindableEvent:Fire(cValue)
@@ -4129,16 +4738,10 @@ local types = {
         local color = flag.status.color
         local transparency = flag.status.transparency
         connections.add(observe(color):onChange(function()
-            if not flag.private then
-                task.spawn(funcs.export)
-            end
             flag.user.Value = {get(color), get(transparency)}
             flag.bindableEvent:Fire(unpack(flag.user.Value))
         end))
         connections.add(observe(transparency):onChange(function()
-            if not flag.private then
-                task.spawn(funcs.export)
-            end
             flag.user.Value = {get(color), get(transparency)}
             flag.bindableEvent:Fire(unpack(flag.user.Value))
         end))
@@ -4153,18 +4756,21 @@ local cleaner = {
         if status.keycode then
             clean.keycode = get(status.keycode)
         end
+        if get(status.coordinate) then
+            clean.coordinate = {X = get(status.coordinate).X, Y = get(status.coordinate).Y}
+        end
         return clean
     end,
     ['dropdown'] = function(status)
-        return status.multiselect and get(status.items) or get(status.item)
+        return status.multiselect and {unpack(get(status.items))} or get(status.item)
     end,
     ['keybind'] = function(status)
         local clean = {}
         if status.keycode then
             clean.keycode = get(status.keycode)
         end
-        if status.coordinate then
-            clean.coordinate = get(status.coordinate)
+        if get(status.coordinate) then
+            clean.coordinate = {X = get(status.coordinate).X, Y = get(status.coordinate).Y}
         end
         return clean
     end,
@@ -4175,27 +4781,28 @@ local cleaner = {
         return get(status.correctText)
     end,
     ['colorpicker'] = function(status)
-        return {color = get(status.color), transparency = get(status.transparency)}
+        return {color = get(status.color):ToHex(), transparency = get(status.transparency)}
     end
 }
 
-function funcs.preregister(name)
+function funcs.preregister(name, preregisteredValue)
     local flagEvent = fusion.New "BindableEvent" {}
     local onChange = {}
     function onChange:Connect(func)
         assert(typeof(func) == "function", "Connect only takes functions")
         connections.add(flagEvent.Event:Connect(func))
     end
+    local fileChange = (fusion.New "BindableEvent" {})
     local _flag
     _flag = {
         name = name,
-        status = {
-            ready = value(false)
-        },
+        status = {},
         type = "unknown",
         preregistered = true,
         bindableEvent = flagEvent,
-        file = value({}),
+        file = fileChange.Event,
+        fileEvent = fileChange,
+        preregisteredValue = preregisteredValue,
         user = {
             Value = nil,
             OnChange = setmetatable(onChange,{
@@ -4222,9 +4829,9 @@ function funcs.register(name, default, type, private)
         assert(typeof(func) == "function", "Connect")
         connections.add(flagEvent.Event:Connect(func))
     end
-    default.ready = value(false)
     local _flag
     if not preregistered[name] then
+        local fileChange = (fusion.New "BindableEvent" {})
         _flag = {
             name = name,
             status = default,
@@ -4232,7 +4839,8 @@ function funcs.register(name, default, type, private)
             private = private,
             preregistered = false,
             bindableEvent = flagEvent,
-            file = value({}),
+            file = fileChange.Event,
+            fileEvent = fileChange,
             user = {
                 Value = nil,
                 OnChange = setmetatable(onChange,{
@@ -4250,7 +4858,6 @@ function funcs.register(name, default, type, private)
     else
         _flag = preregistered[name]
         _flag.type = type
-        _flag.preregistered = false
         _flag.status = default
         _flag.private = private
         types[_flag.type](_flag)
@@ -4259,33 +4866,178 @@ function funcs.register(name, default, type, private)
     return _flag
 end
 
-funcs.config = value("")
+function funcs.find(uid)
+    for i,v in configs do
+        if v.uid == uid then
+            return v, i
+        end
+    end
+    return false
+end
 
-function funcs.export()
-    local exported = {}
-    local _list = get(flags.list)
-    for _,flag in _list do
+local hasAutoloaded = false
+function funcs.create(name, uid, fromFile, tbl, fromSet, lock, autoload)
+    fromFile = fromFile or false
+    fromSet = fromSet or false
+    lock = lock or false
+    autoload = autoload or false
+    if uid == "original" and fromFile then
+        return
+    end
+    if fromSet and fromFile then
+        table.insert(potentialFromFiles, uid)
+    end
+    if fromSet and not fromFile then
+        for _,v in potentialFromFiles do
+            local config = funcs.find(v)
+            if config and config.name == name then
+                return v
+            end
+        end
+    end
+
+    uid = uid or randomString(5)
+    local config = {}
+    config.name = name
+    config.fromSet = fromSet
+    config.lock = lock
+    config.uid = uid
+    config.autoload = autoload
+    config.flagValues = {}
+    if tbl ~= nil then
+        config.flagValues = tbl
+    else
+        for _,flag in get(flags.list) do
+            if flag.private then
+                continue
+            end
+            if flag.type == "unknown" then
+                continue
+            end
+            config.flagValues[flag.name] = cleaner[flag.type](flag.status)
+        end
+    end
+    table.insert(configs, config)
+    if funcs.writeFiles then
+        customFunctions.writefile(`{funcs.path}/{config.uid}.json`, HttpService:JSONEncode(config))
+    end
+    task.spawn(function()
+        for _,v in functionsOnCreate do
+            task.spawn(v)
+        end
+    end)
+    if autoload and not hasAutoloaded then
+        hasAutoloaded = true
+        for i,v in config.flagValues do
+            funcs.preregister(i, v)
+        end
+        funcs.set(uid)
+    end
+    return uid
+end
+
+function funcs.init()
+    if funcs.writeFiles then
+        for _,file in customFunctions.listfiles(funcs.path) do
+            local config = HttpService:JSONDecode(customFunctions.readfile(file))
+            funcs.create(config.name, config.uid, true, config.flagValues, config.fromSet, config.lock, config.autoload)
+        end
+        return hasAutoloaded
+    end
+end
+
+function load(config)
+    for i,v in config.flagValues do
+        local flag = get(flags.list)[i]
+        if not flag then
+            continue
+        end
+        flag.fileEvent:Fire(v)
+    end
+end
+
+function funcs.set(uid)
+    if not uid then
+        funcs.currentConfig = {}
+        return
+    end
+    local config = funcs.find(uid)
+    if not config then
+        return
+    end
+    funcs.currentConfig = config
+    load(config)
+    task.spawn(function()
+        for _,v in functionsOnCreate do
+            task.spawn(v, uid)
+        end
+    end)
+end
+
+function funcs.save(uid)
+    local config = funcs.find(uid)
+    for _,flag in get(flags.list) do
         if flag.private then
             continue
         end
         if flag.type == "unknown" then
             continue
         end
-        exported[flag.name] = cleaner[flag.type](flag.status)
+        config.flagValues[flag.name] = cleaner[flag.type](flag.status)
     end
-    if get(funcs.config) ~= "" then
-        customFunctions.writefile(get(funcs.config), HttpService:JSONEncode(exported))
+    if funcs.writeFiles then
+        customFunctions.writefile(`{funcs.path}/{config.uid}.json`, HttpService:JSONEncode(config))
     end
 end
+function funcs.edit(uid, property, newValue)
+    local config = funcs.find(uid)
+    if config then
+        config[property] = newValue
+        funcs.save(uid)
+    end
+end
+function funcs.setAutoload(uid, boolean)
+    local config = funcs.find(uid)
+    if not config then
+        return
+    end
 
-function funcs.load(fileTable)
-    for i,v in fileTable do
-        local flag = get(flags.list)[i]
-        if not flag then
+    funcs.edit(uid, "autoload", boolean)
+    for _,_config in configs do
+        if _config.uid == uid then
             continue
         end
-        flag.file:set(v)
+        funcs.edit(_config.uid, "autoload", false)
     end
+end
+function funcs.delete(uid)
+    local config, index = funcs.find(uid)
+    if config then
+        if funcs.writeFiles then
+            if customFunctions.isfile(`{funcs.path}/{config.uid}.json`) then
+                customFunctions.delfile(`{funcs.path}/{config.uid}.json`)
+                table.remove(configs, index)
+            end
+        end
+        table.remove(configs, index)
+    end
+    funcs.set(nil)
+end
+function funcs.export()
+    return HttpService:JSONEncode(funcs.currentConfig)
+end
+
+function funcs.getConfigs()
+    return configs
+end
+function funcs.getConfig()
+    return funcs.currentConfig
+end
+function funcs.onCreate(func)
+    table.insert(functionsOnCreate, func)
+end
+function funcs.onSelect(func)
+    table.insert(functionsOnSelect, func)
 end
 
 return funcs
@@ -4310,7 +5062,7 @@ end)() end,
     ['left'] = "rbxassetid://10709768114",
     ['right'] = "rbxassetid://10709768347",
     ['log'] = "rbxassetid://121839622982024",
-    ['stats'] = "rbxassetid://10709770317"
+    ['settings'] = "rbxassetid://10709810948"
 }
 end)() end,
     [60] = function()local wax,script,require=ImportGlobals(60)local ImportGlobals return (function(...)local cF = require(script.Parent.Parent.utilities.customFunctions)
@@ -4326,46 +5078,197 @@ services = setmetatable(services, {
 return services
 end)() end,
     [61] = function()local wax,script,require=ImportGlobals(61)local ImportGlobals return (function(...)local themeSystem = {}
-local fusion = require(script.Parent.Fusion)
+local services = require(script.Parent.services)
+local HttpService = services.HttpService
+local Bundles = require(script.Parent)
+local fusion = Bundles.Fusion
 local default = require(script.default)
 local value = fusion.Value
 local observe = fusion.Observer
 
 local get = require(script.Parent.Parent.utilities.get)
 local animate = require(script.Parent.Parent.utilities.animate)
+local _warn = warn
+local randomString = require(script.Parent.Parent.utilities.randomString)
+local customFunctions = require(script.Parent.Parent.utilities.customFunctions)
 local functionsOnChange = {}
+local functionsOnCreate = {}
 
 local currentTheme = value({})
+local _currentTheme = value({})
+local chronoUID = ""
 observe(currentTheme):onChange(function()
+    task.wait()
     for _,func in ipairs(functionsOnChange) do
         task.spawn(func)
     end
 end)
 
+local themes = {}
+local potentialFromFiles = {}
+
 local palletteCheck = {}
-table.foreach(default, function(name, color)
+table.foreach(default, function(name)
     table.insert(palletteCheck, name)
 end)
 
-function themeSystem.create(pallette)
-    for _,v in palletteCheck do
-        if pallette[v] == nil then
-            pallette[v] = default[v]
-        end
-        if typeof(pallette[v]) ~= "Color3" then
-            error(v.." isn't type Color3")
-        end
-    end
-    for i,_ in pallette do
-        if not table.find(palletteCheck, i) then
-            warn('Incorrect value removed "'..tostring(i)..'"')
-            pallette[i] = nil
+themeSystem.path = ""
+
+function themeSystem.find(uid)
+    for _,theme in themes do
+        if theme.uid == uid then
+            return true, theme
         end
     end
-    currentTheme:set(pallette)
+    return false
 end
 
-function themeSystem.get(name:string)
+function themeSystem.create(name, palette, uid, fromFile, fromSet)
+    fromFile = fromFile or false
+    if uid == "original" and fromFile then
+        return
+    end
+    for _,v in palletteCheck do
+        if palette[v] == nil then
+            palette[v] = default[v]
+        end
+        if typeof(palette[v]) ~= "Color3" then
+            _warn(v.." isn't type Color3")
+        end
+    end
+    for i,_ in palette do
+        if not table.find(palletteCheck, i) then
+            _warn('Incorrect value removed "'..tostring(i)..'"')
+            palette[i] = nil
+        end
+    end
+
+    if fromSet and fromFile then
+        table.insert(potentialFromFiles, uid)
+    end
+    if fromSet and not fromFile then
+        for _,v in potentialFromFiles do
+            local result = {themeSystem.find(v)}
+            if result[1] and result[2].name == name then
+                return v
+            end
+        end
+    end
+
+    uid = uid or randomString(5)
+    table.insert(themes, {
+        name = name,
+        uid = uid,
+        fromSet = fromSet or false,
+        palette = palette
+    })
+
+    local ctheme = {}
+    ctheme.name = name
+    ctheme.uid = uid
+    ctheme.fromSet = fromSet
+    ctheme.palette = {}
+    for i,v in palette do
+        ctheme.palette[i] = v:ToHex()
+    end
+    customFunctions.writefile(`{themeSystem.path}/{uid}.json`, HttpService:JSONEncode(ctheme))
+    task.spawn(function()
+        for _,v in functionsOnCreate do
+            task.spawn(v)
+        end
+    end)
+    return uid
+end
+
+function themeSystem.delete(uid)
+    local results = {themeSystem.find(uid)}
+    if not results[1] then
+        return false, "no theme found"
+    end
+    local position = table.find(themes, results[2])
+    themeSystem.set(chronoUID)
+    table.remove(themes, position)
+    customFunctions.delfile(`{themeSystem.path}/{results[2].uid}.json`)
+end
+
+function themeSystem.edit(name, color)
+    local ctheme = get(currentTheme)
+    ctheme[name] = color
+    currentTheme:set(ctheme)
+end
+function themeSystem.editTheme(uid:string, property:string, new:any)
+    local results = {themeSystem.find(uid)}
+    if not results[1] then
+        return false
+    end
+    local theme = results[2]
+    theme[property] = new
+
+    local ctheme = {}
+    ctheme.name = theme.name
+    ctheme.uid = uid
+    ctheme.fromSet = theme.fromSet
+    ctheme.palette = {}
+    for i,v in theme.palette do
+        ctheme.palette[i] = v:ToHex()
+    end
+    customFunctions.writefile(`{themeSystem.path}/{uid}.json`, HttpService:JSONEncode(ctheme))
+
+    return true
+end
+
+function themeSystem.set(uid)
+    local results = {themeSystem.find(uid)}
+    local theme, palette
+    if results[1] then
+        theme, palette = results[2], results[2].palette
+    else
+        return false, "no theme found"
+    end
+
+    local _palette = {}
+    table.foreach(palette,function(i,v)
+        _palette[i] = v
+    end)
+    currentTheme:set(_palette)
+    _currentTheme:set(theme)
+    return true, "successfully set new theme"
+end
+function themeSystem.export()
+    local theme = get(_currentTheme)
+    local ctheme = {}
+    ctheme.name = theme.name
+    ctheme.uid = theme.uid
+    ctheme.fromSet = theme.fromSet
+    ctheme.palette = {}
+    for i,v in theme.palette do
+        ctheme.palette[i] = v:ToHex()
+    end
+    return HttpService:JSONEncode(ctheme)
+end
+
+function themeSystem.save(uid)
+    local results = {themeSystem.find(uid)}
+    if results[1] then
+        local theme = results[2]
+        local ctheme = {}
+        ctheme.name = theme.name
+        ctheme.uid = theme.uid
+        ctheme.fromSet = theme.fromSet
+        ctheme.palette = {}
+        for i,v in theme.palette do
+            ctheme.palette[i] = v:ToHex()
+        end
+        theme.palette = get(currentTheme)
+        customFunctions.writefile(`{themeSystem.path}/{uid}.json`, HttpService:JSONEncode(ctheme))
+        themeSystem.set(uid)
+        return true
+    else
+        return false
+    end
+end
+
+function themeSystem.get(name)
     local theme = get(currentTheme)
     if theme[name] then
         return theme[name]
@@ -4380,9 +5283,35 @@ for _,v in palletteCheck do
     end,40,1)
 end
 
-currentTheme:set(default)
+function themeSystem.init()
+    chronoUID = themeSystem.create("chrono", default, "original")
+    themeSystem.set(chronoUID)
+    for _,file in customFunctions.listfiles(themeSystem.path) do
+        local theme = HttpService:JSONDecode(customFunctions.readfile(file))
+        table.foreach(theme.palette,function(i,v)
+            local color = Color3.fromHex(`#{v}`)
+            theme.palette[i] = color
+        end)
+        themeSystem.create(theme.name, theme.palette, theme.uid, true, theme.fromSet)
+    end
+end
+
 function themeSystem.onChange(func)
     table.insert(functionsOnChange, func)
+end
+function themeSystem.onCreate(func)
+    table.insert(functionsOnCreate, func)
+end
+
+function themeSystem.getTheme()
+    return get(_currentTheme)
+end
+
+function themeSystem.getThemes()
+    return themes
+end
+function themeSystem.getColors()
+    return get(currentTheme)
 end
 
 return themeSystem
@@ -4578,7 +5507,6 @@ return function(property)
 	local animate = utilities.animate
 	local typecheck = utilities.typecheck
 	local customFont = utilities.customFont
-	local references = utilities.references
 
 	local simpleElements = require(chrono.simpleElements)
 	local UIListLayout = simpleElements.UIListLayout
@@ -4595,6 +5523,7 @@ return function(property)
 		Description = "",
 		ImageDescription = "",
 		Enabled = false,
+		Visible = false,
 		DisabledText = "",
         Callback = function()end,
 		Image = ""
@@ -4604,14 +5533,13 @@ return function(property)
 		property.Enabled and "" or "Enabled",
 		property.Callback and "" or "Callback",
 		property.DisabledText and "" or "DisabledText",
-		property.Image and "" or "Image"
+		property.Image and "" or "Image",
+		property.Visible and "" or "Visible"
 	})
 	assert(didPass, table.concat(failedItems, "\n"))
 
 	-- Data
 
-	local instanceName = get(data.find("instanceName").name)
-	local mousePosition = data.find("mousePosition").vector2
 	local componentY = data.find("componentY").number
 	local hideAll = data.find("hideAll")
 	local button = data.add(property)
@@ -4625,18 +5553,18 @@ return function(property)
 	local isEnabled = property.Enabled or value(true)
 	local disabledText = property.DisabledText or value("Component Disabled")
 	local callback = property.Callback or value(function() end)
+	local visible = property.Visible or value(true)
 
 	local image = property.Image
 
 	-- Variables
 
-	local screenGui = references.get(instanceName)
 	local down = value(false)
 	local hover = value(false)
 
 	-- Button
 
-	new "TextButton" {
+	local inst = new "TextButton" {
 		Interactable = computed(function()
 			if not get(isEnabled) then
 				return false
@@ -4646,6 +5574,7 @@ return function(property)
 			end
 			return true
 		end),
+		Visible = visible,
 		Name = button.uid,
 		Parent = _parent,
 		Size = UDim2.new(1,0,0,get(componentY)),
@@ -4741,57 +5670,7 @@ return function(property)
 	-- Hover
 
 	if get(description) then
-		new "Frame" {
-			Parent = screenGui,
-			Size = UDim2.fromOffset(0,20),
-			Position = computed(function()
-				return UDim2.fromOffset(get(mousePosition).X +12, get(mousePosition).Y)
-			end),
-			BackgroundTransparency = animate(function()
-				return get(hover) and 0.3 or 1
-			end,40,1),
-			BackgroundColor3 = theme.background,
-			AutomaticSize = Enum.AutomaticSize.XY,
-
-			[children] = {
-				UIPadding(4),
-				UIListLayout(SO.LayoutOrder,FD.Horizontal,HA.Left,VA.Center,UDim.new(0,4)),
-				new "UIStroke" {
-					Color = theme.background2,
-					Thickness = 1.5,
-					Transparency = animate(function()
-						return (get(hideAll.boolean) or not get(hover)) and 1 or 0.65
-					end,40,1)
-				},
-				new "ImageLabel" {
-					Visible = get(imageDescription) and true or false,
-					Size = UDim2.fromOffset(16,16),
-					BackgroundTransparency = 1,
-					Image = imageDescription,
-					ImageTransparency = animate(function()
-						return (get(hideAll.boolean) or not get(hover)) and 1 or 0
-					end,40,1)
-				},
-				new "TextLabel" {
-					Size = UDim2.fromOffset(0,20),
-					BackgroundTransparency = 1,
-					Text = description,
-					TextSize = 16,
-					TextColor3 = theme.text,
-					AutomaticSize = Enum.AutomaticSize.XY,
-					TextXAlignment = Enum.TextXAlignment.Left,
-					TextWrapped = true,
-					FontFace = customFont("Inter", Enum.FontWeight.Regular),
-					TextTransparency = animate(function()
-						return (get(hideAll.boolean) or not get(hover)) and 1 or 0
-					end,40,1)
-				},
-				new "UISizeConstraint" {
-					MaxSize = Vector2.new(250,9e9),
-					MinSize = Vector2.new(0,20)
-				}
-			}
-		}
+		require(chrono.components.hover)(hover, imageDescription, description)
 	end
 
 	local returnFunctions = {}
@@ -4814,10 +5693,273 @@ return function(property)
 	function returnFunctions:Disable()
 		isEnabled:set(false)
 	end
+	function returnFunctions:Visible()
+		visible:set(true)
+	end
+	function returnFunctions:Invisible()
+		visible:set(false)
+	end
+	function returnFunctions:Destroy()
+		inst:Destroy()
+		callback:set(function()end)
+		table.clear(returnFunctions)
+	end
 	return returnFunctions
 end
 end)() end,
     [66] = function()local wax,script,require=ImportGlobals(66)local ImportGlobals return (function(...)local chrono = script.Parent.Parent
+return function(property)
+	local Bundles = require(chrono.Bundles)
+	local data = Bundles.data
+	local theme = Bundles.themeSystem
+	local icons = Bundles.icons
+	local Fusion = Bundles.Fusion
+		local new = Fusion.New
+		local children = Fusion.Children
+		local value = Fusion.Value
+		local observe = Fusion.Observer
+		local onevent = Fusion.OnEvent
+		local computed = Fusion.Computed
+
+	local utilities = require(chrono.utilities)
+	local get = utilities.get
+	local animate = utilities.animate
+	local typecheck = utilities.typecheck
+	local customFont = utilities.customFont
+
+	local simpleElements = require(chrono.simpleElements)
+    local UIListLayout = simpleElements.UIListLayout
+    local SO = Enum.SortOrder
+	local FD = Enum.FillDirection
+	local HA = Enum.HorizontalAlignment
+	local VA = Enum.VerticalAlignment
+	local UIPadding = simpleElements.UIPadding
+	local UICorner = simpleElements.UICorner
+
+    -- Property
+
+    local _parent = property.Parent
+    local _tab = property.tab
+
+    -- Variables
+
+    local visibleCount = value(0)
+    local visible = value(true)
+
+	-- Button Group
+
+    local buttonGroup = new "Frame" {
+        Visible = visible,
+        Parent = _parent,
+		Size = UDim2.new(1,0,0,36),
+        BackgroundTransparency = 1,
+
+        [children] = {
+            UIPadding(0,2),
+            UIListLayout(SO.LayoutOrder,FD.Horizontal,HA.Left,VA.Center,UDim.new(0,3))
+        }
+    }
+
+    local absSize = value(buttonGroup.AbsoluteSize)
+
+    local returnTable = {}
+    function returnTable:Button(_property)
+
+        -- Typecheck
+
+        local didPass, failedItems = typecheck(_property,{
+            Name = "",
+            DisabledText = "",
+            IsEnabled = false,
+            Visible = false,
+            Image = "",
+            Callback = function()end
+        },{
+            _property.IsEnabled and "" or "IsEnabled",
+            _property.Visible and "" or "Visible",
+            _property.DisabledText and "" or "DisabledText",
+            _property.Image and "" or "Image"
+        })
+        assert(didPass, table.concat(failedItems, "\n"))
+
+        -- Data
+
+        local selectedTab = data.find("selectedTab")
+        local hideAll = data.find("hideAll")
+        local componentY = data.find("componentY").number
+        local button = data.add(_property)
+
+        -- Properties
+
+        local name = _property.Name
+        local callback = _property.Callback
+        local isEnabled = _property.IsEnabled or value(true)
+        local disabledText = _property.DisabledText or value("Component Disabled")
+        local _visible = _property.Visible or value(true)
+        local image = _property.Image
+
+
+        -- Variables
+
+        local down = value(false)
+        local hover = value(false)
+
+        new "TextButton" {
+            Interactable = computed(function()
+                if not get(isEnabled) then
+                    return false
+                end
+                if get(hideAll.boolean) or get(hideAll.all) then
+                    return false
+                end
+                return true
+            end),
+            Visible = visible,
+            Name = button.uid,
+            Parent = buttonGroup,
+            Size = computed(function()
+                return UDim2.new(1/get(visibleCount) - (get(visibleCount) - 1 == 0 and 0 or ((((get(visibleCount)-1)*3)/get(visibleCount))/get(absSize).X)),0,0,get(componentY))
+            end),
+            BackgroundTransparency = 1,
+
+            [onevent "MouseButton1Down"] = function()
+                down:set(true)
+            end,
+            [onevent "MouseButton1Up"] = function()
+                down:set(false)
+            end,
+            [onevent "MouseEnter"] = function()
+                hover:set(true)
+            end,
+            [onevent "MouseLeave"] = function()
+                down:set(false)
+                hover:set(false)
+            end,
+
+            [onevent "Activated"] = function()
+                task.spawn(get(callback))
+            end,
+
+            [children] = {
+                UIPadding(1.5),
+                new "TextLabel" {
+                    ZIndex = 2,
+                    Visible = computed(function()
+                        return not get(isEnabled)
+                    end),
+                    Size = UDim2.fromScale(1,1),
+                    BackgroundColor3 = theme.background,
+                    Text = disabledText,
+                    TextColor3 = theme.text,
+                    TextSize = 16,
+                    FontFace = customFont("Inter", Enum.FontWeight.Bold),
+                    BackgroundTransparency = animate(function()
+                        return get(hideAll.boolean) and 1 or 0.3
+                    end,40,1),
+                    TextTransparency = animate(function()
+                        return get(hideAll.boolean) and 1 or 0
+                    end,40,1)
+                },
+                new "Frame" {
+                    Size = UDim2.fromScale(1,1),
+                    BackgroundColor3 = computed(function()
+                        return get(down) and theme.get("background2") or theme.get("background")
+                    end),
+                    BackgroundTransparency = computed(function()
+                        return get(hideAll.boolean) and 1 or get(down) and 0.65 or 0.5
+                    end),
+
+                    [children] = {
+                        new "UIStroke" {
+                            Color = theme.background2,
+                            Thickness = 1.5,
+                            Transparency = animate(function()
+                                return get(hideAll.boolean) and 1 or 0.65
+                            end,40,1),
+                        },
+                        UIListLayout(SO.LayoutOrder,FD.Horizontal,HA.Center,VA.Center,UDim.new(0,5)),
+                        new "ImageLabel" {
+                            Visible = computed(function()
+                                return get(image) ~= nil and get(image) ~= "" and true or false
+                            end),
+                            Size = UDim2.fromOffset(20,20),
+                            BackgroundTransparency = 1,
+                            Image = computed(function()
+                                return get(image) or ""
+                            end),
+                            ImageTransparency = animate(function()
+                                return get(hideAll.boolean) and 1 or 0
+                            end,40,1)
+                        },
+                        new "TextLabel" {
+                            Size = UDim2.fromScale(0,1),
+                            BackgroundTransparency = 1,
+                            Text = name,
+                            RichText = true,
+                            TextSize = 16,
+                            TextColor3 = theme.text,
+                            AutomaticSize = Enum.AutomaticSize.X,
+                            FontFace = customFont("Inter", Enum.FontWeight.Regular),
+                            TextTransparency = animate(function()
+                                return get(hideAll.boolean) and 1 or 0
+                            end,40,1)
+                        }
+                    }
+                }
+            }
+        }
+
+        if get(_visible) then
+            visibleCount:set(get(visibleCount) + 1)
+        end
+        observe(_visible):onChange(function()
+            if get(_visible) then
+                visibleCount:set(get(visibleCount) + 1)
+            else
+                visibleCount:set(get(visibleCount) - 1)
+            end
+        end)
+
+        local returnFunctions = {}
+        function returnFunctions:SetName(newText)
+            local _didPass, _failedItems = typecheck({['SetName'] = newText}, {SetName = ""})
+            assert(_didPass, table.concat(_failedItems, "\n"))
+
+            name:set(newText)
+        end
+        function returnFunctions:SetCallback(newFunction)
+            local _didPass, _failedItems = typecheck({['SetCallback'] = newFunction}, {SetCallback = function()end})
+            assert(_didPass, table.concat(_failedItems, "\n"))
+
+            callback:set(newFunction)
+        end
+        function returnFunctions:Fire()
+            task.spawn(get(callback))
+        end
+        function returnFunctions:Enable()
+            isEnabled:set(true)
+        end
+        function returnFunctions:Disable()
+            isEnabled:set(false)
+        end
+        function returnFunctions:Visible()
+            _visible:set(true)
+        end
+        function returnFunctions:Invisible()
+            _visible:set(false)
+        end
+        return returnFunctions
+    end
+    function returnTable:Visible()
+        visible:set(true)
+    end
+    function returnTable:Invisible()
+        visible:set(false)
+    end
+	return returnTable
+end
+end)() end,
+    [67] = function()local wax,script,require=ImportGlobals(67)local ImportGlobals return (function(...)local chrono = script.Parent.Parent
 return function(property)
 	local Bundles = require(chrono.Bundles)
 	local data = Bundles.data
@@ -4866,6 +6008,8 @@ return function(property)
 		Transparency = 0,
 		Description = "",
 		ImageDescription = "",
+		HideTransparency = false,
+		Visible = false
 	},{
 		property.Description and "" or "Description",
 		property.ImageDescription and "" or "ImageDescription",
@@ -4875,14 +6019,14 @@ return function(property)
 
 		property.FLAG and "" or "FLAG",
 		property.Color and "" or "Color",
-		property.Transparency and "" or "Transparency"
+		property.Transparency and "" or "Transparency",
+		property.HideTransparency and "" or "HideTransparency",
+		property.Visible and "" or "Visible"
 	})
 	assert(didPass, table.concat(failedItems, "\n"))
 
 	-- Data
 
-	local instanceName = get(data.find("instanceName").name)
-	local mousePosition = data.find("mousePosition").vector2
 	local useConfig = data.find("useConfig")
 	local runserviceFunctions = data.find("runserviceFunctions").list
 	local componentY = data.find("componentY").number
@@ -4899,6 +6043,8 @@ return function(property)
 	local isEnabled = property.Enabled or value(true)
 	local disabledText = property.DisabledText or value("Component Disabled")
 	local callback = property.Callback or value(function() end)
+	local hideTransparency = property.HideTransparency or value(false)
+	local visible = property.Visible or value(true)
 
 	local _color = property.Color or value(Color3.new(1))
 	local _transparency = property.Transparency or value(0)
@@ -4937,18 +6083,22 @@ return function(property)
 	local transparencyDown = value(false)
 
 	local dropped = value(false)
-	local screenGui = references.get(instanceName)
 	local hover = value(false)
+
+	local hueAmount = value(0)
+	local saturationAmount = value(0)
+	local valueAmount = value(0)
 
 	-- Colorpicker
 
-	new "Frame" {
+	local inst = new "Frame" {
 		Interactable = computed(function()
 			if not get(isEnabled) then
 				return false
 			end
 			return true
 		end),
+		Visible = visible,
 		Parent = _parent,
 		Size = animate(function()
 			return get(dropped) and UDim2.new(1,0,0,get(componentY)+165 + 4) or UDim2.new(1,0,0,get(componentY))
@@ -5062,84 +6212,93 @@ return function(property)
 
 								[children] = {
 									UIListLayout(SO.LayoutOrder,FD.Horizontal,HA.Center,VA.Top,UDim.new(0,5)),
-									new "TextButton" { -- Saturation and Value
+									new "Frame" { -- Saturation and Value
+										BackgroundTransparency = 1,
 										Size = UDim2.new(1,-63,1,0),
 
-										[ref] = saturationValue,
-
-										[onevent "InputBegan"] = function(input)
-											if input.UserInputType ~= Enum.UserInputType.MouseButton1 then
-												return
-											end
-											saturationValueDown:set(true)
-											local _changed
-											_changed = input.Changed:Connect(function()
-												if input.UserInputState == Enum.UserInputState.End or input.UserInputState.Cancel then
-													saturationValueDown:set(false)
-													_changed:Disconnect()
-												end
-											end)
-										end,
-
 										[children] = {
-											new "UIGradient" {
-												Color = computed(function()
-													return ColorSequence.new {
-														ColorSequenceKeypoint.new(0, Color3.fromRGB(255, 255, 255)),
-														ColorSequenceKeypoint.new(1, Color3.fromHSV(({get(color):ToHSV()})[1],1,1)),
-														}
-												end)
+											new "UIStroke" {
+												Color = theme.text,
+												Thickness = 0.5,
+												Transparency = 0.5
 											},
-											new "Frame" {
-												Size = UDim2.fromScale(1,1),
+											new "TextButton" { 
+												Size = UDim2.new(1,0,1,0),
+
+												[ref] = saturationValue,
+
+												[onevent "InputBegan"] = function(input)
+													if input.UserInputType ~= Enum.UserInputType.MouseButton1 then
+														return
+													end
+													saturationValueDown:set(true)
+													local _changed
+													_changed = input.Changed:Connect(function()
+														if input.UserInputState == Enum.UserInputState.End or input.UserInputState.Cancel then
+															saturationValueDown:set(false)
+															_changed:Disconnect()
+														end
+													end)
+												end,
 
 												[children] = {
 													new "UIGradient" {
-														Rotation = 270,
-														Color = ColorSequence.new {
-															ColorSequenceKeypoint.new(0, Color3.fromRGB(0,0,0)),
-															ColorSequenceKeypoint.new(1, Color3.fromRGB(0,0,0)),
-														},
-														Transparency = computed(function()
-															return NumberSequence.new {
-																NumberSequenceKeypoint.new(0, 0),
-																NumberSequenceKeypoint.new(1, 1),
-																}
+														Color = computed(function()
+															return ColorSequence.new {
+																ColorSequenceKeypoint.new(0, Color3.fromRGB(255, 255, 255)),
+																ColorSequenceKeypoint.new(1, Color3.fromHSV(get(hueAmount),1,1)),
+															}
 														end)
-													}
-												}
-											},
-											new "ImageLabel" {
-												Visible = dropped,
-												ZIndex = 2,
-												AnchorPoint = Vector2.new(0.5,0.5),
-												BackgroundTransparency = 1,
-												Image = icons.circle,
-												Size = UDim2.fromOffset(10,10),
-												ImageColor3 = computed(function()
-													local _,_,_val = get(color):ToHSV()
-													return Color3.fromHSV(0,0,1-_val)
-												end),
-												Position = computed(function()
-													local _,_sat,_val = get(color):ToHSV()
-													return UDim2.fromScale(_sat, 1-_val)
-												end),
+													},
+													new "Frame" {
+														Size = UDim2.fromScale(1,1),
 
-												[children] = {
+														[children] = {
+															new "UIGradient" {
+																Rotation = 270,
+																Color = ColorSequence.new {
+																	ColorSequenceKeypoint.new(0, Color3.fromRGB(0,0,0)),
+																	ColorSequenceKeypoint.new(1, Color3.fromRGB(0,0,0)),
+																},
+																Transparency = computed(function()
+																	return NumberSequence.new {
+																		NumberSequenceKeypoint.new(0, 0),
+																		NumberSequenceKeypoint.new(1, 1),
+																		}
+																end)
+															}
+														}
+													},
 													new "ImageLabel" {
+														Visible = dropped,
 														ZIndex = 2,
 														AnchorPoint = Vector2.new(0.5,0.5),
 														BackgroundTransparency = 1,
 														Image = icons.circle,
-														Size = UDim2.fromScale(0.9,0.9),
+														Size = UDim2.fromOffset(10,10),
 														ImageColor3 = computed(function()
-															return Color3.fromHSV(({get(color):ToHSV()})[1],1,1)
+															return Color3.fromHSV(0,0,1-get(valueAmount))
 														end),
-														Position = UDim2.fromScale(0.5,0.5)
+														Position = computed(function()
+															return UDim2.fromScale(get(saturationAmount), 1-get(valueAmount))
+														end),
 
+														[children] = {
+															new "ImageLabel" {
+																ZIndex = 2,
+																AnchorPoint = Vector2.new(0.5,0.5),
+																BackgroundTransparency = 1,
+																Image = icons.circle,
+																Size = UDim2.fromScale(0.9,0.9),
+																ImageColor3 = computed(function()
+																	return Color3.fromHSV(get(hueAmount),1,1)
+																end),
+																Position = UDim2.fromScale(0.5,0.5)
+															}
+														}
 													}
 												}
-											}
+											},
 										}
 									},
 									new "TextButton" { -- Hue
@@ -5183,13 +6342,15 @@ return function(property)
 												BackgroundColor3 = theme.colorpickerBar,
 												Size = UDim2.new(1,0,0,2),
 												Position = computed(function()
-													local _hue = get(color):ToHSV()
-													return UDim2.fromScale(0,1 - _hue)
+													return UDim2.fromScale(0,1 - get(hueAmount))
 												end)
 											}
 										}
 									},
 									new "ImageButton" { -- Transparency
+										Visible = computed(function()
+											return not get(hideTransparency)
+										end),
 										ZIndex = 2,
 										Size = UDim2.new(0,24,1,0),
 										BackgroundTransparency = 1,
@@ -5305,6 +6466,9 @@ return function(property)
 											end)
 											if s and result then
 												color:set(result)
+												hueAmount:set(({get(color):ToHSV()})[1])
+												saturationAmount:set(({get(color):ToHSV()})[2])
+												valueAmount:set(({get(color):ToHSV()})[3])
 											else
 												_RGBTextBox.Text = _old
 											end
@@ -5372,6 +6536,9 @@ return function(property)
 												end)
 												if s then
 													color:set(result)
+													hueAmount:set(({get(color):ToHSV()})[1])
+													saturationAmount:set(({get(color):ToHSV()})[2])
+													valueAmount:set(({get(color):ToHSV()})[3])
 												else
 													_textBox.Text = "#"..get(color):ToHex()
 												end
@@ -5398,51 +6565,7 @@ return function(property)
 	}
 
 	if get(description) then
-		new "Frame" {
-			Parent = screenGui,
-			Size = UDim2.fromOffset(0,20),
-			Position = computed(function()
-				return UDim2.fromOffset(get(mousePosition).X +12, get(mousePosition).Y)
-			end),
-			BackgroundTransparency = animate(function()
-				return get(hover) and 0.3 or 1
-			end,40,1),
-			BackgroundColor3 = theme.background,
-			AutomaticSize = Enum.AutomaticSize.X,
-
-			[children] = {
-				UIPadding(4),
-				UIListLayout(SO.LayoutOrder,FD.Horizontal,HA.Left,VA.Center,UDim.new(0,4)),
-				new "UIStroke" {
-					Color = theme.background2,
-					Thickness = 1.5,
-					Transparency = animate(function()
-						return (get(hideAll.boolean) or not get(hover)) and 1 or 0.65
-					end,40,1)
-				},
-				new "ImageLabel" {
-					Visible = get(imageDescription) and true or false,
-					Size = UDim2.fromOffset(16,16),
-					BackgroundTransparency = 1,
-					Image = imageDescription,
-					ImageTransparency = animate(function()
-						return (get(hideAll.boolean) or not get(hover)) and 1 or 0
-					end,40,1)
-				},
-				new "TextLabel" {
-					Size = UDim2.fromOffset(0,20),
-					BackgroundTransparency = 1,
-					Text = description,
-					TextSize = 16,
-					TextColor3 = theme.text,
-					AutomaticSize = Enum.AutomaticSize.X,
-					FontFace = customFont("Inter", Enum.FontWeight.Regular),
-					TextTransparency = animate(function()
-						return (get(hideAll.boolean) or not get(hover)) and 1 or 0
-					end,40,1)
-				}
-			}
-		}
+		require(chrono.components.hover)(hover, imageDescription, description)
 	end
 
 	table.insert(runserviceFunctions, function()
@@ -5451,6 +6574,8 @@ return function(property)
 			local newSV = UserInputService:GetMouseLocation() - _saturationValue.AbsolutePosition - Vector2.new(0,get(offset.number))
 			newSV = Vector2.new(math.clamp(newSV.X, 0, _saturationValue.AbsoluteSize.X), math.clamp(newSV.Y, 0, _saturationValue.AbsoluteSize.Y))
 			local _hue = get(color):ToHSV()
+			saturationAmount:set(newSV.X/_saturationValue.AbsoluteSize.X)
+			valueAmount:set((_saturationValue.AbsoluteSize.Y - newSV.Y)/_saturationValue.AbsoluteSize.Y)
 			color:set(Color3.fromHSV(_hue, newSV.X/_saturationValue.AbsoluteSize.X,(_saturationValue.AbsoluteSize.Y - newSV.Y)/_saturationValue.AbsoluteSize.Y))
 		end
 		if get(hueDown) then
@@ -5458,6 +6583,7 @@ return function(property)
 			local newHue = UserInputService:GetMouseLocation() - _hue.AbsolutePosition - Vector2.new(0,get(offset.number))
 			newHue = Vector2.new(0, math.clamp(newHue.Y, 0, _hue.AbsoluteSize.Y))
 			local _,_sat,_val = get(color):ToHSV()
+			hueAmount:set((_hue.AbsoluteSize.Y - newHue.Y)/_hue.AbsoluteSize.Y)
 			color:set(Color3.fromHSV((_hue.AbsoluteSize.Y - newHue.Y)/_hue.AbsoluteSize.Y, _sat, _val))
 		end
 		if get(transparencyDown) then
@@ -5470,19 +6596,20 @@ return function(property)
 
 	-- Closure
 
-	flag.status.ready:set(true)
-
 	if get(useConfig.boolean) then
-		observe(flag.file):onChange(function()
-			local file = get(flag.file)
+		flag.file:Connect(function(file)
 			local noColor = true
 			local noTransparency = true
 			if file.color ~= nil then
-				local a = string.split(file.color:gsub(" ", ""), ",")
-				table.foreach(a, function(i,v)
-					a[i] = tonumber(v)
-				end)
-				color:set(Color3.new(unpack(a)))
+				if string.find(file.color, ",") then
+					local a = string.split(file.color:gsub(" ", ""), ",")
+					table.foreach(a, function(i,v)
+						a[i] = tonumber(v)
+					end)
+					color:set(Color3.new(unpack(a)))
+				else
+					color:set(Color3.fromHex(`#{string.gsub(file.color,"#","")}`))
+				end
 				noColor = false
 			end
 			if file.transparency ~= nil then
@@ -5495,6 +6622,9 @@ return function(property)
 			if noTransparency then
 				transparency:set(get(_transparency))
 			end
+			hueAmount:set(({get(color):ToHSV()})[1])
+			saturationAmount:set(({get(color):ToHSV()})[2])
+			valueAmount:set(({get(color):ToHSV()})[3])
 		end)
 		if flag.private then
 			color:set(get(_color))
@@ -5503,6 +6633,21 @@ return function(property)
 	else
 		color:set(get(_color))
 		transparency:set(get(_transparency))
+	end
+	if flag.preregistered and flag.preregisteredValue and typeof(flag.preregisteredValue) == "table" then
+		if flag.preregisteredValue.color and typeof(flag.preregisteredValue.color) == "string" then
+			local s,result = pcall(function()
+				return Color3.fromHex(flag.preregisteredValue.color)
+			end)
+			if s then
+				color:set(result)
+			end
+		end
+		if not get(hideTransparency) then
+			if flag.preregisteredValue.transparency and typeof(flag.preregisteredValue.transparency) == "number" then
+				transparency:set(flag.preregisteredValue.transparency)
+			end
+		end
 	end
 
 	local returnFunctions = {}
@@ -5516,13 +6661,17 @@ return function(property)
 		local _didPass, _failedItems = typecheck({['SetColor'] = newColor}, {SetColor = Color3.new()})
 		assert(_didPass, table.concat(_failedItems, "\n"))
 
-		flag.status.color:set(newColor)
+		color:set(newColor)
+
+		hueAmount:set(({get(color):ToHSV()})[1])
+		saturationAmount:set(({get(color):ToHSV()})[2])
+		valueAmount:set(({get(color):ToHSV()})[3])
 	end
 	function returnFunctions:SetTransparency(newTransparency)
 		local _didPass, _failedItems = typecheck({['SetTransparency'] = newTransparency}, {SetTransparency = 0})
 		assert(_didPass, table.concat(_failedItems, "\n"))
 
-		flag.status.transparency:set(newTransparency)
+		transparency:set(newTransparency)
 	end
 	function returnFunctions:Enable()
 		isEnabled:set(true)
@@ -5530,10 +6679,21 @@ return function(property)
 	function returnFunctions:Disable()
 		isEnabled:set(false)
 	end
+	function returnFunctions:Visible()
+		visible:set(true)
+	end
+	function returnFunctions:Invisible()
+		visible:set(false)
+	end
+	function returnFunctions:Destroy()
+		inst:Destroy()
+		callback:set(function()end)
+		table.clear(returnFunctions)
+	end
 	return returnFunctions
 end
 end)() end,
-    [67] = function()local wax,script,require=ImportGlobals(67)local ImportGlobals return (function(...)local darius = script.Parent.Parent
+    [68] = function()local wax,script,require=ImportGlobals(68)local ImportGlobals return (function(...)local darius = script.Parent.Parent
 return function(property)
     local Bundles = require(darius.Bundles)
 	local data = Bundles.data
@@ -5579,7 +6739,7 @@ return function(property)
     }
 end
 end)() end,
-    [68] = function()local wax,script,require=ImportGlobals(68)local ImportGlobals return (function(...)local chrono = script.Parent.Parent
+    [69] = function()local wax,script,require=ImportGlobals(69)local ImportGlobals return (function(...)local chrono = script.Parent.Parent
 
 return function(property)
 	local Bundles = require(chrono.Bundles)
@@ -5624,7 +6784,8 @@ return function(property)
         Multiselect = true,
         Regex = function()end,
 		Description = "",
-		ImageDescription = ""
+		ImageDescription = "",
+		Visible = false
 	},{
 		property.DisabledText and "" or "DisabledText",
 		property.FLAG and "" or "FLAG",
@@ -5633,7 +6794,8 @@ return function(property)
 		property.Multiselect and "" or "Multiselect",
 		property.Regex and "" or "Regex",
 		property.Description and "" or "Description",
-		property.ImageDescription and "" or "ImageDescription"
+		property.ImageDescription and "" or "ImageDescription",
+		property.Visible and "" or "Visible"
 	})
 	assert(didPass, table.concat(failedItems, "\n"))
 
@@ -5652,8 +6814,6 @@ return function(property)
 
 	local useConfig = data.find("useConfig")
 	local componentY = data.find("componentY").number
-	local instanceName = get(data.find("instanceName").name)
-	local mousePosition = data.find("mousePosition").vector2
 	local hideAll = data.find("hideAll")
 	local dropdown = data.add(property)
 
@@ -5666,6 +6826,7 @@ return function(property)
 	local isEnabled = property.Enabled or value(true)
 	local disabledText = property.DisabledText or value("Component Disabled")
 	local callback = property.Callback or value(function() end)
+	local visible = property.Visible or value(true)
 
 	local items = value({})
 	local multiselect = property.Multiselect or value(false)
@@ -5692,7 +6853,6 @@ return function(property)
 	local down = value(false)
 	local searched = value("")
 	local hover = value(false)
-	local screenGui = references.get(instanceName)
 
 	connections.add(observe(_selectedItems):onChange(function()
 		if #get(_selectedItems) == #get(items) then
@@ -5711,12 +6871,22 @@ return function(property)
 		task.spawn(get(callback), get(regex)(get(_selectedItem)))
 		lastReturnedValue:set(get(regex)(get(_selectedItem)))
 	end))
+	local function checkIfExists(item)
+		for _,eItem in get(items) do
+			local _value = typeof(eItem) == "table" and eItem.Value or eItem
+			if _value == item then
+				return true
+			end
+		end
+		return false
+	end
 
 	-- Dropdown
 
-	new "Frame" {
+	local inst = new "Frame" {
 		Parent = _parent,
 		ClipsDescendants = true,
+		Visible = visible,
 		Size = animate(function()
 			local _y = 0
 			if get(isDropped) and typeof(get(dropdownRef)) == "Instance" then
@@ -5799,7 +6969,15 @@ return function(property)
 							new "TextLabel" {
 								Size = UDim2.new(1,-26,1),
 								BackgroundTransparency = 1,
-								Text = name,
+								Text = computed(function()
+									if get(multiselect) then
+										return get(name).." "..tostring(#get(_selectedItems)).."/"..tostring(#get(items))
+									end
+									if typeof(get(lastReturnedValue)) == "table" or typeof(get(lastReturnedValue)) == "string" and get(lastReturnedValue) == "" then
+										return get(name)
+									end
+									return `{get(name)}: {get(lastReturnedValue)}`
+								end),
 								TextSize = 16,
 								TextColor3 = theme.text,
 								RichText = true,
@@ -5906,51 +7084,7 @@ return function(property)
 	}
 
 	if get(description) then
-		new "Frame" {
-			Parent = screenGui,
-			Size = UDim2.fromOffset(0,20),
-			Position = computed(function()
-				return UDim2.fromOffset(get(mousePosition).X +12, get(mousePosition).Y)
-			end),
-			BackgroundTransparency = animate(function()
-				return get(hover) and 0.3 or 1
-			end,40,1),
-			BackgroundColor3 = theme.background,
-			AutomaticSize = Enum.AutomaticSize.X,
-
-			[children] = {
-				UIPadding(4),
-				UIListLayout(SO.LayoutOrder,FD.Horizontal,HA.Left,VA.Center,UDim.new(0,4)),
-				new "UIStroke" {
-					Color = theme.background2,
-					Thickness = 1.5,
-					Transparency = animate(function()
-						return (get(hideAll.boolean) or not get(hover)) and 1 or 0.65
-					end,40,1)
-				},
-				new "ImageLabel" {
-					Visible = get(imageDescription) and true or false,
-					Size = UDim2.fromOffset(16,16),
-					BackgroundTransparency = 1,
-					Image = imageDescription,
-					ImageTransparency = animate(function()
-						return (get(hideAll.boolean) or not get(hover)) and 1 or 0
-					end,40,1)
-				},
-				new "TextLabel" {
-					Size = UDim2.fromOffset(0,20),
-					BackgroundTransparency = 1,
-					Text = description,
-					TextSize = 16,
-					TextColor3 = theme.text,
-					AutomaticSize = Enum.AutomaticSize.X,
-					FontFace = customFont("Inter", Enum.FontWeight.Regular),
-					TextTransparency = animate(function()
-						return (get(hideAll.boolean) or not get(hover)) and 1 or 0
-					end,40,1)
-				}
-			}
-		}
+		require(chrono.components.hover)(hover, imageDescription, description)
 	end
 
 	connections.add(observe(items):onChange(function()
@@ -6070,42 +7204,7 @@ return function(property)
 			}
 
 			if get(itemDescription) then
-				new "Frame" {
-					Parent = screenGui,
-					Size = UDim2.fromOffset(0,20),
-					Position = computed(function()
-						return UDim2.fromOffset(get(mousePosition).X +12, get(mousePosition).Y)
-					end),
-					BackgroundTransparency = animate(function()
-						return get(_hover) and 0.3 or 1
-					end,40,1),
-					BackgroundColor3 = theme.background,
-					AutomaticSize = Enum.AutomaticSize.X,
-
-					[children] = {
-						UIPadding(4),
-						UIListLayout(SO.LayoutOrder,FD.Horizontal,HA.Left,VA.Center,UDim.new(0,4)),
-						new "UIStroke" {
-							Color = theme.background2,
-							Thickness = 1.5,
-							Transparency = animate(function()
-								return (get(hideAll.boolean) or not get(_hover)) and 1 or 0.65
-							end,40,1)
-						},
-						new "TextLabel" {
-							Size = UDim2.fromOffset(0,20),
-							BackgroundTransparency = 1,
-							Text = itemDescription,
-							TextSize = 16,
-							TextColor3 = theme.text,
-							AutomaticSize = Enum.AutomaticSize.X,
-							FontFace = customFont("Inter", Enum.FontWeight.Regular),
-							TextTransparency = animate(function()
-								return (get(hideAll.boolean) or not get(_hover)) and 1 or 0
-							end,40,1)
-						}
-					}
-				}
+				require(chrono.components.hover)(_hover, itemImage, itemDescription)
 			end
 			table.insert(tbl, _inst)
 		end
@@ -6116,17 +7215,32 @@ return function(property)
 
 	items:set(get(property.Items))
 
-	flag.status.ready:set(true)
-
-	if get(useConfig.boolean) then
-		observe(flag.file):onChange(function()
-			local file = get(flag.file)
+	if get(useConfig.boolean)  then
+		flag.file:Connect(function(file)
 			local noChange = true
 			if file ~= nil then
 				noChange = false
 			end
 			if get(multiselect) then
-				_selectedItems:set(file)
+				local cleansed = {}
+				for _,v in file do
+					if checkIfExists(v) then
+						table.insert(cleansed, v)
+					end
+				end
+				local currents = get(_selectedItems)
+				local different = false
+				local longerTable = #currents > #cleansed and currents or cleansed
+				local shorterTable = #currents < #cleansed and currents or cleansed
+				for i,v in longerTable do
+					if shorterTable[i] ~= v then
+						different = true
+						break
+					end
+				end
+				if different then
+					_selectedItems:set(cleansed)
+				end
 			else
 				_selectedItem:set(file)
 			end
@@ -6149,7 +7263,13 @@ return function(property)
 				end
 			else
 				if default then
-					_selectedItem:set(get(default))
+					for _,v in get(items) do
+						if typeof(v) == "table" and v.Value == get(default) then
+							_selectedItem:set(get(default))
+						elseif v == get(default) then
+							_selectedItem:set(get(default))
+						end
+					end
 				end
 			end
 		end
@@ -6161,6 +7281,35 @@ return function(property)
 		else
 			if default then
 				_selectedItem:set(get(default))
+			end
+		end
+	end
+	if flag.preregistered and flag.preregisteredValue then
+		if get(multiselect) then
+			if typeof(flag.preregisteredValue) == "table" then
+				local cleansed = {}
+				for _,v in flag.preregisteredValue do
+					if checkIfExists(v) then
+						table.insert(cleansed, v)
+					end
+				end
+				local currents = get(_selectedItems)
+				local different = false
+				local longerTable = #currents > #cleansed and currents or cleansed
+				local shorterTable = #currents < #cleansed and currents or cleansed
+				for i,v in longerTable do
+					if shorterTable[i] ~= v then
+						different = true
+						break
+					end
+				end
+				if different then
+					_selectedItems:set(cleansed)
+				end
+			end
+		else
+			if typeof(flag.preregisteredValue) == "string" and checkIfExists(flag.preregisteredValue) then
+				_selectedItem:set(flag.preregisteredValue)
 			end
 		end
 	end
@@ -6206,7 +7355,6 @@ return function(property)
 			end
 		end
 	end
-
 	function returnFunctions:SelectItem(item) -- Sets item used when Multiselect is false
 		assert(not get(multiselect), ":SelectItem requires Multiselect to be false")
 		local _didPass, _failedItems = typecheck({['SelectItem'] = item}, {SelectItem = ""})
@@ -6255,10 +7403,21 @@ return function(property)
 	function returnFunctions:Disable()
 		isEnabled:set(false)
 	end
+	function returnFunctions:Visible()
+		visible:set(true)
+	end
+	function returnFunctions:Invisible()
+		visible:set(false)
+	end
+	function returnFunctions:Destroy()
+		inst:Destroy()
+		callback:set(function()end)
+		table.clear(returnFunctions)
+	end
 	return returnFunctions
 end
 end)() end,
-    [69] = function()local wax,script,require=ImportGlobals(69)local ImportGlobals return (function(...)local chrono = script.Parent.Parent
+    [70] = function()local wax,script,require=ImportGlobals(70)local ImportGlobals return (function(...)local chrono = script.Parent.Parent
 return function(property)
     local Bundles = require(chrono.Bundles)
 	local data = Bundles.data
@@ -6510,15 +7669,99 @@ return function(property)
 	return addTab
 end
 end)() end,
-    [70] = function()local wax,script,require=ImportGlobals(70)local ImportGlobals return (function(...)local chrono = script.Parent.Parent
+    [71] = function()local wax,script,require=ImportGlobals(71)local ImportGlobals return (function(...)local chrono = script.Parent.Parent
+return function(hover,imageDescription,description)
+    local Bundles = require(chrono.Bundles)
+	local data = Bundles.data
+	local theme = Bundles.themeSystem
+	local Fusion = Bundles.Fusion
+		local new = Fusion.New
+		local children = Fusion.Children
+		local computed = Fusion.Computed
+
+	local utilities = require(chrono.utilities)
+	local get = utilities.get
+	local animate = utilities.animate
+	local typecheck = utilities.typecheck
+	local customFont = utilities.customFont
+	local references = utilities.references
+
+	local simpleElements = require(chrono.simpleElements)
+	local UIListLayout = simpleElements.UIListLayout
+	local UIPadding = simpleElements.UIPadding
+	local SO = Enum.SortOrder
+	local FD = Enum.FillDirection
+	local HA = Enum.HorizontalAlignment
+	local VA = Enum.VerticalAlignment
+
+    local instanceName = get(data.find("instanceName").name)
+    local mousePosition = data.find("mousePosition").vector2
+    local hideAll = data.find("hideAll")
+
+    local screenGui = references.get(instanceName)
+
+    new "Frame" {
+        Parent = screenGui,
+        Size = UDim2.fromOffset(0,20),
+        Position = computed(function()
+            return UDim2.fromOffset(get(mousePosition).X +12, get(mousePosition).Y)
+        end),
+        BackgroundTransparency = animate(function()
+            return get(hover) and 0.3 or 1
+        end,40,1),
+        BackgroundColor3 = theme.background,
+        AutomaticSize = Enum.AutomaticSize.XY,
+
+        [children] = {
+            UIPadding(4),
+            UIListLayout(SO.LayoutOrder,FD.Horizontal,HA.Left,VA.Center,UDim.new(0,4)),
+            new "UIStroke" {
+                Color = theme.background2,
+                Thickness = 1.5,
+                Transparency = animate(function()
+                    return (get(hideAll.boolean) or not get(hover)) and 1 or 0.65
+                end,40,1)
+            },
+            new "ImageLabel" {
+                Visible = get(imageDescription) ~= "" and true or false,
+                Size = UDim2.fromOffset(16,16),
+                BackgroundTransparency = 1,
+                Image = imageDescription,
+                ImageColor3 = theme.image,
+                ImageTransparency = animate(function()
+                    return (get(hideAll.boolean) or not get(hover)) and 1 or 0
+                end,40,1)
+            },
+            new "TextLabel" {
+                Size = UDim2.fromOffset(0,20),
+                BackgroundTransparency = 1,
+                Text = description,
+                TextSize = 16,
+                TextColor3 = theme.text,
+                AutomaticSize = Enum.AutomaticSize.XY,
+                TextXAlignment = Enum.TextXAlignment.Left,
+                TextWrapped = true,
+                FontFace = customFont("Inter", Enum.FontWeight.Regular),
+                TextTransparency = animate(function()
+                    return (get(hideAll.boolean) or not get(hover)) and 1 or 0
+                end,40,1)
+            },
+            new "UISizeConstraint" {
+                MaxSize = Vector2.new(250,9e9),
+                MinSize = Vector2.new(0,20)
+            }
+        }
+    }
+end
+
+end)() end,
+    [72] = function()local wax,script,require=ImportGlobals(72)local ImportGlobals return (function(...)local chrono = script.Parent.Parent
 return function(property)
 	local Bundles = require(chrono.Bundles)
 	local data = Bundles.data
 	local theme = Bundles.themeSystem
 	local icons = Bundles.icons
 	local flagCreator = Bundles.flags
-	local services = Bundles.services
-	local UserInputService = services.UserInputService
 	local Fusion = Bundles.Fusion
 		local new = Fusion.New
 		local children = Fusion.Children
@@ -6534,12 +7777,9 @@ return function(property)
 	local connections = utilities.connections
 	local customFont = utilities.customFont
 	local references = utilities.references
-	local drag = utilities.drag
 
 	local simpleElements = require(chrono.simpleElements)
 	local UIPadding = simpleElements.UIPadding
-	local UICorner = simpleElements.UICorner
-	local UITextSizeConstraint = simpleElements.UITextSizeConstraint
 	local UIListLayout = simpleElements.UIListLayout
 	local SO = Enum.SortOrder
 	local FD = Enum.FillDirection
@@ -6559,7 +7799,8 @@ return function(property)
 		Bind = Enum.KeyCode.Q,
 		OnHold = function()end,
 		Description = "",
-		ImageDescription = ""
+		ImageDescription = "",
+		Visible = false
 	},{
 		property.DisabledText and "" or "DisabledText",
 		property.FLAG and "" or "FLAG",
@@ -6569,6 +7810,7 @@ return function(property)
 		property.Bind and "" or "Bind",
 		property.Description and "" or "Description",
 		property.ImageDescription and "" or "ImageDescription",
+		property.Visible and "" or "Visible"
 	})
 	assert(didPass, table.concat(failedItems, "\n"))
 
@@ -6576,12 +7818,11 @@ return function(property)
 
 	local currentBinds = data.find("currentBinds")
 	local useConfig = data.find("useConfig")
-	local instanceName = get(data.find("instanceName").name)
-	local mousePosition = data.find("mousePosition").vector2
 	local blacklistedKeys = get(data.find("blacklistedKeys").keys)
 	local bindData = data.find("bindData")
 	local componentY = data.find("componentY").number
 	local capturing = data.find("capturing")
+	local isMobile = data.find("isMobile")
 	local userinputserviceFunctions = data.find("userinputserviceFunctions").list
 	local hideAll = data.find("hideAll")
 	local keybind = data.add(property)
@@ -6595,6 +7836,7 @@ return function(property)
 	local isEnabled = property.Enabled or value(true)
 	local disabledText = property.DisabledText or value("Component Disabled")
 	local callback = property.Callback or value(function() end)
+	local visible = property.Visible or value(true)
 
 	local bind = property.Bind
 	local flag = flagCreator.register(get(property.FLAG) or keybind.uid, {
@@ -6608,7 +7850,6 @@ return function(property)
 	local down = value(false)
 	local hover = value(false)
 	local keyCode = value()
-	local screenGui = references.get(instanceName)
 	local function checkKeyCode(_keycode: EnumItem, dupeMessage:string)
 		local _currentBinds = get(currentBinds.binds)
 		local _bindData = get(bindData.bindData)
@@ -6647,7 +7888,7 @@ return function(property)
 
 	-- Keybind
 
-	new "TextButton" {
+	local inst = new "TextButton" {
 		Interactable = computed(function()
 			if not get(isEnabled) then
 				return false
@@ -6659,6 +7900,7 @@ return function(property)
 		end),
 		Name = keybind.uid,
 		Parent = _parent,
+		Visible = visible,
 		Size = UDim2.new(1,0,0,get(componentY)),
 		BackgroundTransparency = 1,
 
@@ -6814,51 +8056,7 @@ return function(property)
 	}
 
 	if get(description) then
-		new "Frame" {
-			Parent = screenGui,
-			Size = UDim2.fromOffset(0,20),
-			Position = computed(function()
-				return UDim2.fromOffset(get(mousePosition).X +12, get(mousePosition).Y)
-			end),
-			BackgroundTransparency = animate(function()
-				return (get(hideAll.boolean) or not get(hover)) and 1 or 0.3
-			end,40,1),
-			BackgroundColor3 = theme.background,
-			AutomaticSize = Enum.AutomaticSize.X,
-
-			[children] = {
-				UIPadding(4),
-				UIListLayout(SO.LayoutOrder,FD.Horizontal,HA.Left,VA.Center,UDim.new(0,4)),
-				new "UIStroke" {
-					Color = theme.background2,
-					Thickness = 1.5,
-					Transparency = animate(function()
-						return (get(hideAll.boolean) or not get(hover)) and 1 or 0.65
-					end,40,1)
-				},
-				new "ImageLabel" {
-					Visible = get(imageDescription) and true or false,
-					Size = UDim2.fromOffset(16,16),
-					BackgroundTransparency = 1,
-					Image = imageDescription,
-					ImageTransparency = animate(function()
-						return (get(hideAll.boolean) or not get(hover)) and 1 or 0
-					end,40,1)
-				},
-				new "TextLabel" {
-					Size = UDim2.fromOffset(0,20),
-					BackgroundTransparency = 1,
-					Text = description,
-					TextSize = 16,
-					TextColor3 = theme.text,
-					AutomaticSize = Enum.AutomaticSize.X,
-					FontFace = customFont("Inter", Enum.FontWeight.Regular),
-					TextTransparency = animate(function()
-						return (get(hideAll.boolean) or not get(hover)) and 1 or 0
-					end,40,1)
-				}
-			}
-		}
+		require(chrono.components.hover)(hover, imageDescription, description)
 	end
 
 	table.insert(userinputserviceFunctions, function(input, gameProcessed)
@@ -6886,30 +8084,59 @@ return function(property)
 
 	-- Closure
 
-	flag.status.ready:set(true)
-
 	if get(useConfig.boolean) then
-		observe(flag.file):onChange(function()
-			local file = get(flag.file)
+		flag.file:Connect(function(file)
 			local noKeyCode = true
-			if file.keycode ~= nil then
-				checkKeyCode(Enum.KeyCode[file.keycode], "From file")
+			if file.keycode ~= nil and ((get(keyCode) and get(keyCode).Name or  "") ~= file.keycode) then
+				local success, result = pcall(function()
+					return Enum.KeyCode[file.keycode]
+				end)
+				if success then
+					checkKeyCode(result, "File1")
+				end
 				noKeyCode = false
 			end
-			if noKeyCode then
+			if noKeyCode and get(flag.status.keycode) == nil then
 				if bind then
-					checkKeyCode(get(bind), "From file noKeyCode")
+					checkKeyCode(get(bind), "NoFileFound")
 				end
+			end
+			if get(isMobile.boolean) and file.coordinate then
+				--mobileButton.Position = UDim2.fromOffset(file.coordinate.X + 30,file.coordinate.Y + 30 + get(absoluteOffset))
+				--hasPlaced:set(true)
+				flag.status.coordinate:set(file.coordinate)
+			elseif get(isMobile.boolean) and not file.coordinate then
+				--hasPlaced:set(false)
+				--mobileButton.Position = UDim2.fromScale(0.5,0.5)
 			end
 		end)
 		if flag.private then
 			if bind then
-				checkKeyCode(get(bind), "From file private")
+				checkKeyCode(get(bind), "Private")
 			end
 		end
 	else
 		if bind then
-			checkKeyCode(get(bind), "From default")
+			checkKeyCode(get(bind), "IgnoreConfig/UseConfig:false")
+		end
+	end
+	if flag.preregistered and flag.preregisteredValue and typeof(flag.preregisteredValue) == "table" then
+		if not get(isMobile.boolean) then
+			if flag.preregisteredValue.keycode and typeof(flag.preregisteredValue.keycode) == "string" then
+				local success, result = pcall(function()
+					return Enum.KeyCode[flag.preregisteredValue.keycode]
+				end)
+				if success then
+					checkKeyCode(result, "Configuration1")
+				end
+			end
+		else
+			if flag.preregisteredValue.coordinate and typeof(flag.preregisteredValue.coordinate) == "table" and flag.preregisteredValue.coordinate.X and flag.preregisteredValue.coordinate.Y then
+				if typeof(flag.preregisteredValue.coordinate.X) == "number" and typeof(flag.preregisteredValue.coordinate.Y) == "number" then
+					--mobileButton.Position = UDim2.fromOffset(flag.preregisteredValue.coordinate.X + 30,flag.preregisteredValue.coordinate.Y + 30 + get(absoluteOffset))
+					--hasPlaced:set(true)
+				end
+			end
 		end
 	end
 
@@ -6932,10 +8159,22 @@ return function(property)
 	function returnFunctions:Disable()
 		isEnabled:set(false)
 	end
+	function returnFunctions:Visible()
+		visible:set(true)
+	end
+	function returnFunctions:Invisible()
+		visible:set(false)
+	end
+	function returnFunctions:Destroy()
+		inst:Destroy()
+		checkKeyCode(nil)
+		callback:set(function()end)
+		table.clear(returnFunctions)
+	end
 	return returnFunctions
 end
 end)() end,
-    [71] = function()local wax,script,require=ImportGlobals(71)local ImportGlobals return (function(...)local chrono = script.Parent.Parent
+    [73] = function()local wax,script,require=ImportGlobals(73)local ImportGlobals return (function(...)local chrono = script.Parent.Parent
 
 return function(property)
     local bundles = require(chrono.Bundles)
@@ -7030,7 +8269,7 @@ return function(property)
 	return returnTable
 end
 end)() end,
-    [72] = function()local wax,script,require=ImportGlobals(72)local ImportGlobals return (function(...)local chrono = script.Parent.Parent
+    [74] = function()local wax,script,require=ImportGlobals(74)local ImportGlobals return (function(...)local chrono = script.Parent.Parent
 return function(property)
 	local bundles = require(chrono.Bundles)
 	local data = bundles.data
@@ -7072,7 +8311,7 @@ return function(property)
 
 	-- Label
 
-	new "Frame" {
+	local inst = new "Frame" {
 		Name = label.uid,
 		Size = UDim2.new(1,0,0,16),
 		Parent = _parent,
@@ -7138,10 +8377,14 @@ return function(property)
 
 		text:set(newText)
 	end
+	function returnFunctions:Destroy()
+		inst:Destroy()
+		table.clear(returnFunctions)
+	end
 	return returnFunctions
 end
 end)() end,
-    [73] = function()local wax,script,require=ImportGlobals(73)local ImportGlobals return (function(...)local chrono = script.Parent.Parent
+    [75] = function()local wax,script,require=ImportGlobals(75)local ImportGlobals return (function(...)local chrono = script.Parent.Parent
 return function(property)
 	local Bundles = require(chrono.Bundles)
 	local data = Bundles.data
@@ -7201,7 +8444,7 @@ return function(property)
     return listModule.Frame,visible,name
 end
 end)() end,
-    [74] = function()local wax,script,require=ImportGlobals(74)local ImportGlobals return (function(...)local chrono = script.Parent.Parent
+    [76] = function()local wax,script,require=ImportGlobals(76)local ImportGlobals return (function(...)local chrono = script.Parent.Parent
 return function(property)
 	local Bundles = require(chrono.Bundles)
 	local data = Bundles.data
@@ -7246,7 +8489,7 @@ return function(property)
         local image = props.image or ""
 
         local _date = DateTime.now():ToLocalTime()
-        local _time = `{_date.Hour}:{_date.Minute}:{_date.Second}`
+        local _time = `{_date.Hour}:{_date.Minute}`
         currentLog:set(get(currentLog) + 1)
         local _index = get(currentLog)
 
@@ -7270,7 +8513,6 @@ return function(property)
                                 AutomaticSize = Enum.AutomaticSize.X,
                                 RichText = true,
                                 TextXAlignment = Enum.TextXAlignment.Left,
-                                --TextYAlignment = Enum.
                                 TextSize = 20,
                                 TextColor3 = theme.text,
                                 FontFace = customFont("Inter", Enum.FontWeight.Regular),
@@ -7292,9 +8534,7 @@ return function(property)
                                 TextSize = 20,
                                 TextColor3 = theme.text,
                                 FontFace = customFont("Inter", Enum.FontWeight.Regular),
-                                Text = computed(function()
-                                    return `{_string}`
-                                end)
+                                Text = _string
                             }
                         }
                     }
@@ -7352,7 +8592,7 @@ return function(property)
     return inst
 end
 end)() end,
-    [75] = function()local wax,script,require=ImportGlobals(75)local ImportGlobals return (function(...)local chrono = script.Parent.Parent
+    [77] = function()local wax,script,require=ImportGlobals(77)local ImportGlobals return (function(...)local chrono = script.Parent.Parent
 return function(property)
 	local Bundles = require(chrono.Bundles)
 	local data = Bundles.data
@@ -7510,7 +8750,7 @@ return function(property)
     end, visible
 end
 end)() end,
-    [76] = function()local wax,script,require=ImportGlobals(76)local ImportGlobals return (function(...)local chrono = script.Parent.Parent
+    [78] = function()local wax,script,require=ImportGlobals(78)local ImportGlobals return (function(...)local chrono = script.Parent.Parent
 return function(property)
     local bundles = require(chrono.Bundles)
     local theme = bundles.themeSystem
@@ -7814,7 +9054,7 @@ return function(property)
     end)
 end
 end)() end,
-    [77] = function()local wax,script,require=ImportGlobals(77)local ImportGlobals return (function(...)local chrono = script.Parent.Parent
+    [79] = function()local wax,script,require=ImportGlobals(79)local ImportGlobals return (function(...)local chrono = script.Parent.Parent
 return function(quantity, parent)
     local bundles = require(chrono.Bundles)
 	local theme = bundles.themeSystem
@@ -7921,7 +9161,7 @@ return function(quantity, parent)
     end
 end
 end)() end,
-    [78] = function()local wax,script,require=ImportGlobals(78)local ImportGlobals return (function(...)local chrono = script.Parent.Parent
+    [80] = function()local wax,script,require=ImportGlobals(80)local ImportGlobals return (function(...)local chrono = script.Parent.Parent
 
 return function(property)
     local bundles = require(chrono.Bundles)
@@ -7948,13 +9188,12 @@ return function(property)
 
 	-- Typecheck
 
-	local didPass, failedItems = typecheck(property,{Title = "", Body = ""})
+	local didPass, failedItems = typecheck(property,{Title = "", Body = "", Visible = false},{property.Visible and "" or "Visible"})
 	assert(didPass, table.concat(failedItems, "\n"))
 
 	-- Data
 
 	local selectedTab = data.find("selectedTab")
-	local searchText = data.find("searchText")
 	local paragraph = data.add(property)
 
 	-- Properties
@@ -7962,6 +9201,7 @@ return function(property)
 	local _parent = property.Parent
 	local title = property.Title
 	local body = property.Body
+	local visible = property.Visible or value(true)
 
 	-- Variables
 
@@ -8001,12 +9241,7 @@ return function(property)
 	-- Paragraph
 
 	new "Frame" {
-		Visible = computed(function()
-			if get(searchText.string) ~= "" and not string.find(get(title):lower(), get(searchText.string):lower()) and not string.find(get(body):lower(), get(searchText.string):lower()) then
-				return false
-			end
-			return true
-		end),
+		Visible = visible,
 		BackgroundColor3 = theme.background2,
 		Parent = _parent,
 		BackgroundTransparency = selectedAnimation,
@@ -8071,10 +9306,16 @@ return function(property)
 
 		title:set(newTitle)
 	end
+	function returnFunctions:Visible()
+		visible:set(true)
+	end
+	function returnFunctions:Invisible()
+		visible:set(false)
+	end
 	return returnFunctions
 end
 end)() end,
-    [79] = function()local wax,script,require=ImportGlobals(79)local ImportGlobals return (function(...)local chrono = script.Parent.Parent
+    [81] = function()local wax,script,require=ImportGlobals(81)local ImportGlobals return (function(...)local chrono = script.Parent.Parent
 
 return function(property)
 	local Bundles = require(chrono.Bundles)
@@ -8126,7 +9367,8 @@ return function(property)
 		DecimalPlace = 0,
 		Description = "",
 		ImageDescription = "",
-		Points = {}
+		Points = {},
+		Visible = false
 	},{
 		property.DisabledText and "" or "DisabledText",
 		property.FLAG and "" or "FLAG",
@@ -8139,7 +9381,8 @@ return function(property)
 		property.DecimalPlace and "" or "DecimalPlace",
 		property.Description and "" or "Description",
 		property.ImageDescription and "" or "ImageDescription",
-		property.Points and "" or "Points"
+		property.Points and "" or "Points",
+		property.Visible and "" or "Visible"
 	})
 	assert(didPass, table.concat(failedItems, "\n"))
 
@@ -8147,8 +9390,6 @@ return function(property)
 
 	local useConfig = data.find("useConfig")
 	local componentY = data.find("componentY").number
-	local instanceName = get(data.find("instanceName").name)
-	local mousePosition = data.find("mousePosition").vector2
 	local hideAll = data.find("hideAll")
 	local slider = data.add(property)
 
@@ -8161,6 +9402,7 @@ return function(property)
 	local isEnabled = property.Enabled or value(true)
 	local disabledText = property.DisabledText or value("Component Disabled")
 	local callback = property.Callback or value(function() end)
+	local visible = property.Visible or value(true)
 
 	local max = property.Max
 	local min = property.Min
@@ -8207,11 +9449,10 @@ return function(property)
 		end
 	end))
 	local hover = value(false)
-	local screenGui = references.get(instanceName)
 
 	-- Slider
 
-	new "Frame" {
+	local inst = new "Frame" {
 		Interactable = computed(function()
 			if not get(isEnabled) then
 				return false
@@ -8221,6 +9462,7 @@ return function(property)
 			end
 			return true
 		end),
+		Visible = visible,
 		Parent = _parent,
 		Size = UDim2.new(1,0,0,get(componentY) + 19),
 		BackgroundTransparency = 1,
@@ -8460,74 +9702,30 @@ return function(property)
 	}
 
 	if get(description) then
-		new "Frame" {
-			Parent = screenGui,
-			Size = UDim2.fromOffset(0,20),
-			Position = computed(function()
-				return UDim2.fromOffset(get(mousePosition).X +12, get(mousePosition).Y)
-			end),
-			BackgroundTransparency = animate(function()
-				return get(hover) and 0.3 or 1
-			end,40,1),
-			BackgroundColor3 = theme.background,
-			AutomaticSize = Enum.AutomaticSize.X,
-
-			[children] = {
-				UIPadding(4),
-				UIListLayout(SO.LayoutOrder,FD.Horizontal,HA.Left,VA.Center,UDim.new(0,4)),
-				new "UIStroke" {
-					Color = theme.background2,
-					Thickness = 1.5,
-					Transparency = animate(function()
-						return (get(hideAll.boolean) or not get(hover)) and 1 or 0.65
-					end,40,1)
-				},
-				new "ImageLabel" {
-					Visible = get(imageDescription) and true or false,
-					Size = UDim2.fromOffset(16,16),
-					BackgroundTransparency = 1,
-					Image = imageDescription,
-					ImageTransparency = animate(function()
-						return (get(hideAll.boolean) or not get(hover)) and 1 or 0
-					end,40,1)
-				},
-				new "TextLabel" {
-					Size = UDim2.fromOffset(0,20),
-					BackgroundTransparency = 1,
-					Text = description,
-					TextSize = 16,
-					TextColor3 = theme.text,
-					AutomaticSize = Enum.AutomaticSize.X,
-					FontFace = customFont("Inter", Enum.FontWeight.Regular),
-					TextTransparency = animate(function()
-						return (get(hideAll.boolean) or not get(hover)) and 1 or 0
-					end,40,1)
-				}
-			}
-		}
+		require(chrono.components.hover)(hover, imageDescription, description)
 	end
 
 	-- Closure
 
-	flag.status.ready:set(true)
-
 	if get(useConfig.boolean) then
-		observe(flag.file):onChange(function()
-			local file = get(flag.file)
+		flag.file:Connect(function(file)
 			local noPercentageOf = true
 			if file ~= nil then
-				percentageOf:set(file)
+				flag.status.percentageOf:set(math.clamp(file, get(min), get(max)))
 				noPercentageOf = false
 			end
 			if noPercentageOf then
-				percentageOf:set(get(default))
+				flag.status.percentageOf:set(get(default))
 			end
 		end)
 		if flag.private then
-			percentageOf:set(get(default))
+			flag.status.percentageOf:set(get(default))
 		end
 	else
-		percentageOf:set(get(default))
+		flag.status.percentageOf:set(get(default))
+	end
+	if flag.preregistered and flag.preregisteredValue and typeof(flag.preregisteredValue) == "number" then
+		flag.status.percentageOf:set(math.clamp(flag.preregisteredValue, get(min), get(max)))
 	end
 
 	local returnFunctions = {}
@@ -8549,10 +9747,21 @@ return function(property)
 	function returnFunctions:Disable()
 		isEnabled:set(false)
 	end
+	function returnFunctions:Visible()
+		visible:set(true)
+	end
+	function returnFunctions:Invisible()
+		visible:set(false)
+	end
+	function returnFunctions:Destroy()
+		inst:Destroy()
+		callback:set(function()end)
+		table.clear(returnFunctions)
+	end
 	return returnFunctions
 end
 end)() end,
-    [80] = function()local wax,script,require=ImportGlobals(80)local ImportGlobals return (function(...)local chrono = script.Parent.Parent
+    [82] = function()local wax,script,require=ImportGlobals(82)local ImportGlobals return (function(...)local chrono = script.Parent.Parent
 return function(property)
 	local Bundles = require(chrono.Bundles)
 	local data = Bundles.data
@@ -8762,7 +9971,7 @@ return function(property)
 	return tab, tabFrame
 end
 end)() end,
-    [81] = function()local wax,script,require=ImportGlobals(81)local ImportGlobals return (function(...)local chrono = script.Parent.Parent
+    [83] = function()local wax,script,require=ImportGlobals(83)local ImportGlobals return (function(...)local chrono = script.Parent.Parent
 return function(property)
 	local bundles = require(chrono.Bundles)
 	local data = bundles.data
@@ -8806,7 +10015,8 @@ return function(property)
         Default = "",
         FLAG = "",
         Enabled = false,
-        Callback = function()end
+        Callback = function()end,
+		Visible = false
 	},{
 		property.Placeholder and "" or "Placeholder",
 		property.Enabled and "" or "Enabled",
@@ -8816,15 +10026,14 @@ return function(property)
 		property.OnLeave and "" or "OnLeave",
 		property.Default and "" or "Default",
 		property.FLAG and "" or "FLAG",
-		property.DisabledText and "" or "DisabledText"
+		property.DisabledText and "" or "DisabledText",
+		property.Visible and "" or "Visible"
 	})
 	assert(didPass, table.concat(failedItems, "\n"))
 
 	-- Data
 
 	local useConfig = data.find("useConfig")
-	local instanceName = get(data.find("instanceName").name)
-	local mousePosition = data.find("mousePosition").vector2
 	local componentY = data.find("componentY").number
 	local hideAll = data.find("hideAll")
 	local textbox = data.add(property)
@@ -8838,6 +10047,7 @@ return function(property)
 	local isEnabled = property.Enabled or value(true)
 	local disabledText = property.DisabledText or value("Component Disabled")
 	local callback = property.Callback or value(function() end)
+	local visible = property.Visible or value(true)
 
 	local onlyNumbers = property.OnlyNumbers or value(false)
 	local default = property.Default or value("")
@@ -8856,7 +10066,6 @@ return function(property)
 	local lastCorrectText = value(get(correctText))
 	local lastCalled = value("")
 	local hover = value(false)
-	local screenGui = references.get(instanceName)
 
 	connections.add(observe(correctText):onChange(function()
 		if get(onlyNumbers) then
@@ -8914,6 +10123,7 @@ return function(property)
 			return true
 		end),
 		Parent = _parent,
+		Visible = visible,
 		BackgroundTransparency = 1,
 		Size = UDim2.new(1,0,0,get(componentY) + 19),
 
@@ -9060,60 +10270,13 @@ return function(property)
 	}
 
 	if get(description) then
-		new "Frame" {
-			Parent = screenGui,
-			Size = UDim2.fromOffset(0,20),
-			Position = computed(function()
-				return UDim2.fromOffset(get(mousePosition).X +12, get(mousePosition).Y)
-			end),
-			BackgroundTransparency = animate(function()
-				return get(hover) and 0.3 or 1
-			end,40,1),
-			BackgroundColor3 = theme.background,
-			AutomaticSize = Enum.AutomaticSize.X,
-
-			[children] = {
-				UIPadding(4),
-				UIListLayout(SO.LayoutOrder,FD.Horizontal,HA.Left,VA.Center,UDim.new(0,4)),
-				new "UIStroke" {
-					Color = theme.background2,
-					Thickness = 1.5,
-					Transparency = animate(function()
-						return (get(hideAll.boolean) or not get(hover)) and 1 or 0.65
-					end,40,1)
-				},
-				new "ImageLabel" {
-					Visible = get(imageDescription) and true or false,
-					Size = UDim2.fromOffset(16,16),
-					BackgroundTransparency = 1,
-					Image = imageDescription,
-					ImageTransparency = animate(function()
-						return (get(hideAll.boolean) or not get(hover)) and 1 or 0
-					end,40,1)
-				},
-				new "TextLabel" {
-					Size = UDim2.fromOffset(0,20),
-					BackgroundTransparency = 1,
-					Text = description,
-					TextSize = 16,
-					TextColor3 = theme.text,
-					AutomaticSize = Enum.AutomaticSize.X,
-					FontFace = customFont("Inter", Enum.FontWeight.Regular),
-					TextTransparency = animate(function()
-						return (get(hideAll.boolean) or not get(hover)) and 1 or 0
-					end,40,1)
-				}
-			}
-		}
+		require(chrono.components.hover)(hover, imageDescription, description)
 	end
 
 	-- Closure
 
-	flag.status.ready:set(true)
-
 	if get(useConfig.boolean) then
-		observe(flag.file):onChange(function()
-			local file = get(flag.file)
+		flag.file:Connect(function(file)
 			local noCorrectText = true
 			if file ~= nil then
 				if get(onLeave) then
@@ -9148,10 +10311,21 @@ return function(property)
 		if get(onLeave) then
 			focused:set(true)
 		end
-		print(get(default))
 		correctText:set(get(default))
 		if get(onLeave) then
 			focused:set(false)
+		end
+	end
+	if flag.preregistered and flag.preregisteredValue then
+		didPass, failedItems = typecheck({FlagValue = flag.preregisteredValue},{FlagValue = ""})
+		if didPass then
+			if get(onLeave) then
+				focused:set(true)
+			end
+			correctText:set(flag.preregisteredValue)
+			if get(onLeave) then
+				focused:set(false)
+			end
 		end
 	end
 
@@ -9171,21 +10345,25 @@ return function(property)
 	function returnFunctions:Enable()
 		isEnabled:set(true)
 	end
+	function returnFunctions:Visible()
+		visible:set(true)
+	end
+	function returnFunctions:Invisible()
+		visible:set(false)
+	end
 	function returnFunctions:Disable()
 		isEnabled:set(false)
 	end
 	return returnFunctions
 end
 end)() end,
-    [82] = function()local wax,script,require=ImportGlobals(82)local ImportGlobals return (function(...)local chrono = script.Parent.Parent
+    [84] = function()local wax,script,require=ImportGlobals(84)local ImportGlobals return (function(...)local chrono = script.Parent.Parent
 return function(property)
 	local Bundles = require(chrono.Bundles)
 	local data = Bundles.data
 	local theme = Bundles.themeSystem
 	local icons = Bundles.icons
 	local flagCreator = Bundles.flags
-	local services = Bundles.services
-	local UserInputService = services.UserInputService
 	local Fusion = Bundles.Fusion
 		local new = Fusion.New
 		local children = Fusion.Children
@@ -9213,7 +10391,6 @@ return function(property)
 	local VA = Enum.VerticalAlignment
 
 	local _warn = require(script.Parent.warn)[1]
-	local orbs = require(script.Parent.orbs)
 
 	-- Typecheck
 
@@ -9225,7 +10402,8 @@ return function(property)
 		Default = false,
         Callback = function()end,
 		LinkKeybind = true,
-		Bind = Enum.KeyCode.A
+		Bind = Enum.KeyCode.A,
+		Visible = true
 	},{
 		property.DisabledText and "" or "DisabledText",
 		property.FLAG and "" or "FLAG",
@@ -9233,7 +10411,8 @@ return function(property)
 		property.Enabled and "" or "Enabled",
 		property.Callback and "" or "Callback",
 		property.Default and "" or "Default",
-		property.LinkKeybind and "" or "LinkKeybind"
+		property.LinkKeybind and "" or "LinkKeybind",
+		property.Visible and "" or "Visible"
 	})
 	assert(didPass, table.concat(failedItems, "\n"))
 
@@ -9249,13 +10428,12 @@ return function(property)
 	local useConfig = data.find("useConfig")
 	local currentBinds = data.find("currentBinds")
 	local capturing = data.find("capturing")
-	local instanceName = get(data.find("instanceName").name)
-	local mousePosition = data.find("mousePosition").vector2
 	local bindData = data.find("bindData")
 	local blacklistedKeys = get(data.find("blacklistedKeys").keys)
 	local userinputserviceFunctions = data.find("userinputserviceFunctions").list
 	local componentY = data.find("componentY").number
 	local hideAll = data.find("hideAll")
+	local isMobile = data.find("isMobile")
 	local toggle = data.add(property)
 
 	-- Properties
@@ -9267,6 +10445,7 @@ return function(property)
 	local isEnabled = property.Enabled or value(true)
 	local disabledText = property.DisabledText or value("Component Disabled")
 	local callback = property.Callback or value(function() end)
+	local visible = property.Visible or value(true)
 
 	local default = property.Default or value(false)
 	local bind = property.Bind
@@ -9325,11 +10504,10 @@ return function(property)
 		keybind:set(get(keyCode) ~= nil and get(keyCode).Name or nil)
 	end))
 	local hover = value(false)
-	local screenGui = references.get(instanceName)
 
 	-- Toggle
 
-	new "TextButton" {
+	local inst = new "TextButton" {
 		Interactable = computed(function()
 			if not get(isEnabled) then
 				return false
@@ -9339,6 +10517,7 @@ return function(property)
 			end
 			return true
 		end),
+		Visible = visible,
 		Name = toggle.uid,
 		Parent = _parent,
 		Size = UDim2.new(1,0,0,get(componentY)),
@@ -9530,6 +10709,7 @@ return function(property)
 					capturing:update("boolean", false)
 					capturing:update("instance", "")
 					hideAll:update('boolean', false)
+					hideAll:update('all', false)
 					checkKeyCode(nil, "Deletion")
 				end,
 			},
@@ -9546,51 +10726,7 @@ return function(property)
 	}
 
 	if get(description) then
-		new "Frame" {
-			Parent = screenGui,
-			Size = UDim2.fromOffset(0,20),
-			Position = computed(function()
-				return UDim2.fromOffset(get(mousePosition).X +12, get(mousePosition).Y)
-			end),
-			BackgroundTransparency = animate(function()
-				return (get(hideAll.boolean) or not get(hover)) and 1 or 0.3
-			end,40,1),
-			BackgroundColor3 = theme.background,
-			AutomaticSize = Enum.AutomaticSize.X,
-
-			[children] = {
-				UIPadding(4),
-				UIListLayout(SO.LayoutOrder,FD.Horizontal,HA.Left,VA.Center,UDim.new(0,4)),
-				new "UIStroke" {
-					Color = theme.background2,
-					Thickness = 1.5,
-					Transparency = animate(function()
-						return (get(hideAll.boolean) or not get(hover)) and 1 or 0.65
-					end,40,1)
-				},
-				new "ImageLabel" {
-					Visible = get(imageDescription) and true or false,
-					Size = UDim2.fromOffset(16,16),
-					BackgroundTransparency = 1,
-					Image = imageDescription,
-					ImageTransparency = animate(function()
-						return (get(hideAll.boolean) or not get(hover)) and 1 or 0
-					end,40,1)
-				},
-				new "TextLabel" {
-					Size = UDim2.fromOffset(0,20),
-					BackgroundTransparency = 1,
-					Text = description,
-					TextSize = 16,
-					TextColor3 = theme.text,
-					AutomaticSize = Enum.AutomaticSize.X,
-					FontFace = customFont("Inter", Enum.FontWeight.Regular),
-					TextTransparency = animate(function()
-						return (get(hideAll.boolean) or not get(hover)) and 1 or 0
-					end,40,1)
-				}
-			}
-		}
+		require(chrono.components.hover)(hover, imageDescription, description)
 	end
 
 	table.insert(userinputserviceFunctions, function(input, gameProcessed)
@@ -9611,40 +10747,76 @@ return function(property)
 
 	-- Closure
 
-	flag.status.ready:set(true)
-
 	if get(useConfig.boolean) then
-		observe(flag.file):onChange(function()
-			local file = get(flag.file)
+		flag.file:Connect(function(file)
 			local noBoolean = true
 			local noKeyCode = true
 			if file.boolean ~= nil then
-				boolean:set(file.boolean)
+				flag.status.boolean:set(file.boolean)
 				noBoolean = false
 			end
-			if file.keycode ~= nil then
-				checkKeyCode(Enum.KeyCode[file.keycode], "From file")
+			if file.keycode ~= nil and ((get(keyCode) and get(keyCode).Name or  "") ~= file.keycode) then
+				local success, result = pcall(function()
+					return Enum.KeyCode[file.keycode]
+				end)
+				if success then
+					checkKeyCode(result, "File1")
+				end
 				noKeyCode = false
 			end
 			if noBoolean then
-				boolean:set(get(default))
+				flag.status.boolean:set(get(default))
 			end
 			if noKeyCode then
 				if bind then
-					checkKeyCode(get(bind), "From file noKeyCode")
+					checkKeyCode(get(bind), "NoFileFound")
 				end
 			end
+			if get(isMobile.boolean) and file.coordinate then
+				--mobileButton.Position = UDim2.fromOffset(file.coordinate.X + 30,file.coordinate.Y + 30 + get(absoluteOffset))
+				--hasPlaced:set(true)
+				flag.status.coordinate:set(file.coordinate)
+			elseif get(isMobile.boolean) and not file.coordinate then
+				--hasPlaced:set(false)
+				--mobileButton.Position = UDim2.fromScale(0.5,0.5)
+			end
 		end)
+
 		if flag.private then
-			boolean:set(get(default))
+			flag.status.boolean:set(get(default))
 			if bind then
-				checkKeyCode(get(bind), "From file private")
+				checkKeyCode(get(bind), "Private")
 			end
 		end
 	else
-		boolean:set(get(default))
+		flag.status.boolean:set(get(default))
 		if bind then
-			checkKeyCode(get(bind), "From default")
+			checkKeyCode(get(bind), "IgnoreConfig/UseConfig:false")
+		end
+	end
+	if flag.preregistered and flag.preregisteredValue and typeof(flag.preregisteredValue) == "table" then
+		if flag.preregisteredValue.boolean and typeof(flag.preregisteredValue.boolean) == "boolean" then
+			flag.status.boolean:set(flag.preregisteredValue.boolean)
+		end
+		if get(linkKeybind) then
+			if not get(isMobile.boolean) then
+				if flag.preregisteredValue.keycode and typeof(flag.preregisteredValue.keycode) == "string" then
+					local success, result = pcall(function()
+						return Enum.KeyCode[flag.preregisteredValue.keycode]
+					end)
+					if success then
+						checkKeyCode(result, "Configuration1")
+					end
+				end
+			else
+				if flag.preregisteredValue.coordinate and typeof(flag.preregisteredValue.coordinate) == "table" and flag.preregisteredValue.coordinate.X and flag.preregisteredValue.coordinate.Y then
+					if typeof(flag.preregisteredValue.coordinate.X) == "number" and typeof(flag.preregisteredValue.coordinate.Y) == "number" then
+						--mobileButton.Position = UDim2.fromOffset(flag.preregisteredValue.coordinate.X + 30,flag.preregisteredValue.coordinate.Y + 30 + get(absoluteOffset))
+						--hasPlaced:set(true)
+						flag.status.coordinate:set(flag.preregisteredValue.coordinate)
+					end
+				end
+			end
 		end
 	end
 
@@ -9674,10 +10846,23 @@ return function(property)
 	function returnFunctions:Disable()
 		isEnabled:set(false)
 	end
+	function returnFunctions:Visible()
+		visible:set(true)
+	end
+	function returnFunctions:Invisible()
+		visible:set(false)
+	end
+	function returnFunctions:Destroy()
+		inst:Destroy()
+		boolean:set(false)
+		checkKeyCode(nil)
+		callback:set(function()end)
+		table.clear(returnFunctions)
+	end
 	return returnFunctions
 end
 end)() end,
-    [83] = function()local wax,script,require=ImportGlobals(83)local ImportGlobals return (function(...)local chrono = script.Parent.Parent
+    [85] = function()local wax,script,require=ImportGlobals(85)local ImportGlobals return (function(...)local chrono = script.Parent.Parent
 local title = ""
 
 local returnTable = {}
@@ -9702,7 +10887,7 @@ end)
 
 return returnTable
 end)() end,
-    [85] = function()local wax,script,require=ImportGlobals(85)local ImportGlobals return (function(...)local chrono = script.Parent.Parent
+    [87] = function()local wax,script,require=ImportGlobals(87)local ImportGlobals return (function(...)local chrono = script.Parent.Parent
 return function(property, bindableEvent)
 	local bundles = require(chrono.Bundles)
 	local data = bundles.data
@@ -9752,8 +10937,8 @@ return function(property, bindableEvent)
 	local privateFrameList = value()
 	local publicFrameList = value()
 	local capture = value()
-	local stats = value()
-	references.add(chronoref,notificationList,tabFrameList,tabButtonList,container,uipagelayout,uipagelayout2,privateFrameList,capture,publicFrameList,stats)
+	local settings = value()
+	references.add(chronoref,notificationList,tabFrameList,tabButtonList,container,uipagelayout,uipagelayout2,privateFrameList,capture,publicFrameList,settings)
 
 	-- Data
 
@@ -9772,7 +10957,7 @@ return function(property, bindableEvent)
 
 	local hovers = {
 		close = value(false),
-		stats = value(false),
+		settings = value(false),
 		log = value(false),
 		left = value(false),
 		right = value(false)
@@ -9793,7 +10978,6 @@ return function(property, bindableEvent)
 	-- Instance
 
 	new "ScreenGui" {
-		Enabled = visible.boolean,
 		Name = get(instanceName.name),
 		Parent = property.Parent or services.CoreGui,
 		ResetOnSpawn = false,
@@ -9802,6 +10986,7 @@ return function(property, bindableEvent)
 
 		[children] = {
 			new "Frame" {
+				Visible = visible.boolean,
 				Name = "container",
 				Position = UDim2.new(0.5,-get(size).X.Offset/2,0.5,-get(size).Y.Offset/2),
 				Size = computed(function()
@@ -9867,28 +11052,28 @@ return function(property, bindableEvent)
 											return get(hideAll.boolean) and get(hideAll.all) and 1 or 0
 										end,40,1)
 									},
-									new "ImageButton" { -- Stats
+									new "ImageButton" { -- Settings
 										Size = UDim2.fromOffset(24,24),
 										BackgroundTransparency = 1,
-										Image = icons.stats,
+										Image = icons.settings,
 										ImageColor3 = theme.image,
 										ImageTransparency = animate(function()
-											return get(hovers.stats) and 0.2 or 0.4
+											return get(hovers.settings) and 0.2 or 0.4
 										end,30,1),
 
 										[onevent "MouseEnter"] = function()
-											hovers.stats:set(true)
+											hovers.settings:set(true)
 										end,
 
 										[onevent "MouseLeave"] = function()
-											hovers.stats:set(false)
+											hovers.settings:set(false)
 										end,
 
 										[onevent "Activated"] = function()
-											if get(selectedTab.string) ~= "stats" then
-												cachedTab = (get(selectedTab.string) ~= "log" and get(selectedTab.string) ~= "stats") and get(selectedTab.string) or cachedTab
-												selectedTab:update("string", "stats")
-												get(privateFrameList).UIPageLayout:JumpTo(get(privateFrameList).stats)
+											if get(selectedTab.string) ~= "settings" then
+												cachedTab = (get(selectedTab.string) ~= "log" and get(selectedTab.string) ~= "settings") and get(selectedTab.string) or cachedTab
+												selectedTab:update("string", "settings")
+												get(privateFrameList).UIPageLayout:JumpTo(get(privateFrameList).settings)
 												get(uipagelayout2):JumpTo(get(privateFrameList))
 											else
 												selectedTab:update("string", cachedTab)
@@ -9916,7 +11101,7 @@ return function(property, bindableEvent)
 
 										[onevent "Activated"] = function()
 											if get(selectedTab.string) ~= "log" then
-												cachedTab = (get(selectedTab.string) ~= "log" and get(selectedTab.string) ~= "stats") and get(selectedTab.string) or cachedTab
+												cachedTab = (get(selectedTab.string) ~= "log" and get(selectedTab.string) ~= "settings") and get(selectedTab.string) or cachedTab
 												selectedTab:update("string", "log")
 												get(privateFrameList).UIPageLayout:JumpTo(get(privateFrameList).log)
 												get(uipagelayout2):JumpTo(get(privateFrameList))
@@ -9984,7 +11169,7 @@ return function(property, bindableEvent)
 
 										[ref] = uipagelayout2
 									},
-									new "Frame" { -- Stats and Log
+									new "Frame" { -- Settings and Log
 										ClipsDescendants = true,
 										Name = "privateFrameList",
 										Size = UDim2.fromScale(1,1),
@@ -10004,7 +11189,7 @@ return function(property, bindableEvent)
 											},
 											logPage(),
 											new "ScrollingFrame" {
-												Name = "stats",
+												Name = "settings",
 												Size = UDim2.new(1,0,1,0),
 												BackgroundTransparency = 1,
 												ScrollBarThickness = 6,
@@ -10014,7 +11199,7 @@ return function(property, bindableEvent)
 												BottomImage = "rbxasset://textures/ui/Scroll/scroll-middle.png",
 												TopImage = "rbxasset://textures/ui/Scroll/scroll-middle.png",
 
-												[ref] = stats,
+												[ref] = settings,
 									
 												[children] = {
 													UIListLayout(SO.LayoutOrder,FD.Vertical,HA.Left,VA.Top,UDim.new(0,4)),
@@ -10250,7 +11435,11 @@ return function(property, bindableEvent)
 	}
 	get(uipagelayout2):JumpTo(get(publicFrameList))
 
-	local thread1 = coroutine.create(function()
+	local LPH_NO_VIRTUALIZE = LPH_NO_VIRTUALIZE or function(v)
+		return v
+	end
+
+	local loop = LPH_NO_VIRTUALIZE(function()
 		local _tabButtonList = get(tabButtonList)
 		while task.wait() do
 			if get(downs.right) then
@@ -10263,6 +11452,8 @@ return function(property, bindableEvent)
 			end
 		end
 	end)
+
+	local thread1 = coroutine.create(loop)
 	coroutine.resume(thread1)
 	connections.add(thread1)
 
@@ -10270,7 +11461,7 @@ return function(property, bindableEvent)
 	connections.add(orbs(25, get(container).CanvasGroup))
 end
 end)() end,
-    [86] = function()local wax,script,require=ImportGlobals(86)local ImportGlobals return (function(...)return setmetatable({},{
+    [88] = function()local wax,script,require=ImportGlobals(88)local ImportGlobals return (function(...)return setmetatable({},{
     __index = function(self, key)
         if script:FindFirstChild(key) then
             return require(script[key])
@@ -10280,7 +11471,7 @@ end)() end,
     end
 })
 end)() end,
-    [87] = function()local wax,script,require=ImportGlobals(87)local ImportGlobals return (function(...)local Fusion = require(script.Parent.Parent.Bundles.Fusion)
+    [89] = function()local wax,script,require=ImportGlobals(89)local ImportGlobals return (function(...)local Fusion = require(script.Parent.Parent.Bundles.Fusion)
 
 return function(AspectRatio:number, AspectType:Enum.AspectType, DominantAxis:Enum.DominantAxis)
     AspectType = AspectType or Enum.AspectType.FitWithinMaxSize
@@ -10292,7 +11483,7 @@ return function(AspectRatio:number, AspectType:Enum.AspectType, DominantAxis:Enu
     }
 end
 end)() end,
-    [88] = function()local wax,script,require=ImportGlobals(88)local ImportGlobals return (function(...)local Fusion = require(script.Parent.Parent.Bundles.Fusion)
+    [90] = function()local wax,script,require=ImportGlobals(90)local ImportGlobals return (function(...)local Fusion = require(script.Parent.Parent.Bundles.Fusion)
 
 return function(offset, scale)
     scale = scale or 0
@@ -10301,7 +11492,7 @@ return function(offset, scale)
     }
 end
 end)() end,
-    [89] = function()local wax,script,require=ImportGlobals(89)local ImportGlobals return (function(...)local Fusion = require(script.Parent.Parent.Bundles.Fusion)
+    [91] = function()local wax,script,require=ImportGlobals(91)local ImportGlobals return (function(...)local Fusion = require(script.Parent.Parent.Bundles.Fusion)
 
 return function(SortOrder, FillDirection,HorizontalAlignment,VerticalAlignment,Padding)
     return Fusion.New "UIListLayout" {
@@ -10313,7 +11504,7 @@ return function(SortOrder, FillDirection,HorizontalAlignment,VerticalAlignment,P
     }
 end
 end)() end,
-    [90] = function()local wax,script,require=ImportGlobals(90)local ImportGlobals return (function(...)local Fusion = require(script.Parent.Parent.Bundles.Fusion)
+    [92] = function()local wax,script,require=ImportGlobals(92)local ImportGlobals return (function(...)local Fusion = require(script.Parent.Parent.Bundles.Fusion)
 
 return function(...)
     local args = {...}
@@ -10348,7 +11539,7 @@ return function(...)
     end
 end
 end)() end,
-    [91] = function()local wax,script,require=ImportGlobals(91)local ImportGlobals return (function(...)local Fusion = require(script.Parent.Parent.Bundles.Fusion)
+    [93] = function()local wax,script,require=ImportGlobals(93)local ImportGlobals return (function(...)local Fusion = require(script.Parent.Parent.Bundles.Fusion)
 
 return function(MinText:number?, MaxText:number?)
     return Fusion.New "UITextSizeConstraint" {
@@ -10357,7 +11548,7 @@ return function(MinText:number?, MaxText:number?)
     }
 end
 end)() end,
-    [92] = function()local wax,script,require=ImportGlobals(92)local ImportGlobals return (function(...)return setmetatable({},{
+    [94] = function()local wax,script,require=ImportGlobals(94)local ImportGlobals return (function(...)return setmetatable({},{
     __index = function(self, key)
         if script:FindFirstChild(key) then
             return require(script[key])
@@ -10367,14 +11558,14 @@ end)() end,
     end
 })
 end)() end,
-    [93] = function()local wax,script,require=ImportGlobals(93)local ImportGlobals return (function(...)local Fusion = require(script.Parent.Parent.Bundles.Fusion)
+    [95] = function()local wax,script,require=ImportGlobals(95)local ImportGlobals return (function(...)local Fusion = require(script.Parent.Parent.Bundles.Fusion)
 local computed,spring = Fusion.Computed,Fusion.Spring
 
 return function(callback, speed, damping)
 	return spring(computed(callback), speed, damping)
 end
 end)() end,
-    [94] = function()local wax,script,require=ImportGlobals(94)local ImportGlobals return (function(...)local connections = {}
+    [96] = function()local wax,script,require=ImportGlobals(96)local ImportGlobals return (function(...)local connections = {}
 local connectionsFunction = {}
 
 local services = require(script.Parent.Parent.Bundles.services)
@@ -10404,7 +11595,7 @@ end
 
 return connectionsFunction
 end)() end,
-    [95] = function()local wax,script,require=ImportGlobals(95)local ImportGlobals return (function(...)local fonts = {
+    [97] = function()local wax,script,require=ImportGlobals(97)local ImportGlobals return (function(...)local fonts = {
     ["Inter"] = "rbxassetid://12187365364",
     ["Montserrat"] = "rbxassetid://11702779517"
 }
@@ -10420,7 +11611,7 @@ return function(font:string, weight:Enum.FontWeight?, style:Enum.FontStyle?)
     end
 end
 end)() end,
-    [96] = function()local wax,script,require=ImportGlobals(96)local ImportGlobals return (function(...)---@diagnostic disable: undefined-global
+    [98] = function()local wax,script,require=ImportGlobals(98)local ImportGlobals return (function(...)---@diagnostic disable: undefined-global
 local functions = {}
 
 local filesystem = {}
@@ -10431,6 +11622,10 @@ function functions.cloneref(service)
     else
         return service
     end
+end
+
+function functions.printFileSystem()
+    print(filesystem)
 end
 
 function functions.gethui(...)
@@ -10589,15 +11784,29 @@ function functions.listfiles(string:string)
         local cleaned = {}
         for i,v in currentPath do
             if typeof(v) == "string" then
-                table.insert(cleaned, i)
+                table.insert(cleaned, `{string}/{i}`)
             end
         end
         return cleaned
     end
 end
+function functions.getthreadidentity()
+    if getthreadidentity then
+        return getthreadidentity()
+    else
+        return 5
+    end
+end
+function functions.setthreadidentity(number:number)
+    if setthreadidentity then
+        return setthreadidentity(number)
+    else
+        return 5
+    end
+end
 return functions
 end)() end,
-    [97] = function()local wax,script,require=ImportGlobals(97)local ImportGlobals return (function(...)return function(o,s)
+    [99] = function()local wax,script,require=ImportGlobals(99)local ImportGlobals return (function(...)return function(o,s)
 	local services = require(script.Parent.Parent.Bundles.services)
 	local DRAG_SPEED = s or 10
 	local UserInputService = services.UserInputService
@@ -10646,7 +11855,7 @@ end)() end,
 end
 
 end)() end,
-    [98] = function()local wax,script,require=ImportGlobals(98)local ImportGlobals return (function(...)return function(seconds, decimal)
+    [100] = function()local wax,script,require=ImportGlobals(100)local ImportGlobals return (function(...)return function(seconds, decimal)
     decimal = decimal or 0
     local dayCount = math.floor(seconds/(60*60*24))
     seconds -= dayCount*(60*60*24)
@@ -10660,14 +11869,14 @@ end)() end,
     return dayCount, hourCount, seconds
 end
 end)() end,
-    [99] = function()local wax,script,require=ImportGlobals(99)local ImportGlobals return (function(...)return function(value, dependency)
+    [101] = function()local wax,script,require=ImportGlobals(101)local ImportGlobals return (function(...)return function(value, dependency)
 	if typeof(value) == "table" and value.type == "State" then
 		return value:get(dependency)
 	end
 	return value
 end
 end)() end,
-    [100] = function()local wax,script,require=ImportGlobals(100)local ImportGlobals return (function(...)return function(text:string, properties)
+    [102] = function()local wax,script,require=ImportGlobals(102)local ImportGlobals return (function(...)return function(text:string, properties)
     text = text or ""
     local params = Instance.new("GetTextBoundsParams")
     params.Text = text
@@ -10678,7 +11887,7 @@ end)() end,
     return TextService:GetTextBoundsAsync(params)
 end
 end)() end,
-    [101] = function()local wax,script,require=ImportGlobals(101)local ImportGlobals return (function(...)local characters = string.split("qwertyuiopasdfghjklzxcvbnmQWERTYUIOPASDFGHJKLZXCVBNM1234567890","")
+    [103] = function()local wax,script,require=ImportGlobals(103)local ImportGlobals return (function(...)local characters = string.split("qwertyuiopasdfghjklzxcvbnmQWERTYUIOPASDFGHJKLZXCVBNM1234567890","")
 local function randomString(length)
     if length > 0 then
         return randomString(length - 1) .. characters[math.random(1, #characters)]
@@ -10688,7 +11897,7 @@ local function randomString(length)
 end
 return randomString
 end)() end,
-    [102] = function()local wax,script,require=ImportGlobals(102)local ImportGlobals return (function(...)local references = {}
+    [104] = function()local wax,script,require=ImportGlobals(104)local ImportGlobals return (function(...)local references = {}
 local returnFunctions = {}
 local observe = require(script.Parent.Parent.Bundles.Fusion).Observer
 
@@ -10738,14 +11947,14 @@ end
 
 return returnFunctions
 end)() end,
-    [103] = function()local wax,script,require=ImportGlobals(103)local ImportGlobals return (function(...)local Fusion = require(script.Parent.Parent.Bundles.Fusion)
+    [105] = function()local wax,script,require=ImportGlobals(105)local ImportGlobals return (function(...)local Fusion = require(script.Parent.Parent.Bundles.Fusion)
 local computed = Fusion.Computed
 
 return function(callback,style)
 	return Fusion.Tween(computed(callback), style)
 end
 end)() end,
-    [104] = function()local wax,script,require=ImportGlobals(104)local ImportGlobals return (function(...)return function(variables:table, correctVariables:table, ignoreList:table?):any
+    [106] = function()local wax,script,require=ImportGlobals(106)local ImportGlobals return (function(...)return function(variables:table, correctVariables:table, ignoreList:table?):any
     ignoreList = ignoreList or {}
     local didPass = true
     local itemsThatFailed = {}
@@ -10770,155 +11979,6 @@ local ObjectTree = {
         },
         {
             {
-                63,
-                1,
-                {
-                    "components"
-                },
-                {
-                    {
-                        78,
-                        2,
-                        {
-                            "paragraph"
-                        }
-                    },
-                    {
-                        73,
-                        2,
-                        {
-                            "list"
-                        }
-                    },
-                    {
-                        72,
-                        2,
-                        {
-                            "label"
-                        }
-                    },
-                    {
-                        69,
-                        2,
-                        {
-                            "group"
-                        }
-                    },
-                    {
-                        68,
-                        2,
-                        {
-                            "dropdown"
-                        }
-                    },
-                    {
-                        75,
-                        2,
-                        {
-                            "module"
-                        }
-                    },
-                    {
-                        65,
-                        2,
-                        {
-                            "button"
-                        }
-                    },
-                    {
-                        64,
-                        2,
-                        {
-                            "announcement"
-                        }
-                    },
-                    {
-                        74,
-                        2,
-                        {
-                            "logPage"
-                        }
-                    },
-                    {
-                        66,
-                        2,
-                        {
-                            "colorpicker"
-                        }
-                    },
-                    {
-                        76,
-                        2,
-                        {
-                            "notification"
-                        }
-                    },
-                    {
-                        70,
-                        2,
-                        {
-                            "keybind"
-                        }
-                    },
-                    {
-                        83,
-                        2,
-                        {
-                            "warn"
-                        }
-                    },
-                    {
-                        71,
-                        2,
-                        {
-                            "keybindList"
-                        }
-                    },
-                    {
-                        82,
-                        2,
-                        {
-                            "toggle"
-                        }
-                    },
-                    {
-                        81,
-                        2,
-                        {
-                            "textbox"
-                        }
-                    },
-                    {
-                        79,
-                        2,
-                        {
-                            "slider"
-                        }
-                    },
-                    {
-                        80,
-                        2,
-                        {
-                            "tab"
-                        }
-                    },
-                    {
-                        77,
-                        2,
-                        {
-                            "orbs"
-                        }
-                    },
-                    {
-                        67,
-                        2,
-                        {
-                            "divider"
-                        }
-                    }
-                }
-            },
-            {
                 2,
                 2,
                 {
@@ -10926,40 +11986,10 @@ local ObjectTree = {
                 },
                 {
                     {
-                        60,
-                        2,
-                        {
-                            "services"
-                        }
-                    },
-                    {
-                        61,
-                        2,
-                        {
-                            "themeSystem"
-                        },
-                        {
-                            {
-                                62,
-                                2,
-                                {
-                                    "default"
-                                }
-                            }
-                        }
-                    },
-                    {
                         59,
                         2,
                         {
                             "icons"
-                        }
-                    },
-                    {
-                        57,
-                        2,
-                        {
-                            "data"
                         }
                     },
                     {
@@ -10977,94 +12007,6 @@ local ObjectTree = {
                         },
                         {
                             {
-                                14,
-                                1,
-                                {
-                                    "Colour"
-                                },
-                                {
-                                    {
-                                        15,
-                                        2,
-                                        {
-                                            "Oklab"
-                                        }
-                                    }
-                                }
-                            },
-                            {
-                                4,
-                                1,
-                                {
-                                    "Animation"
-                                },
-                                {
-                                    {
-                                        5,
-                                        2,
-                                        {
-                                            "Spring"
-                                        }
-                                    },
-                                    {
-                                        13,
-                                        2,
-                                        {
-                                            "unpackType"
-                                        }
-                                    },
-                                    {
-                                        8,
-                                        2,
-                                        {
-                                            "TweenScheduler"
-                                        }
-                                    },
-                                    {
-                                        10,
-                                        2,
-                                        {
-                                            "lerpType"
-                                        }
-                                    },
-                                    {
-                                        7,
-                                        2,
-                                        {
-                                            "Tween"
-                                        }
-                                    },
-                                    {
-                                        11,
-                                        2,
-                                        {
-                                            "packType"
-                                        }
-                                    },
-                                    {
-                                        12,
-                                        2,
-                                        {
-                                            "springCoefficients"
-                                        }
-                                    },
-                                    {
-                                        9,
-                                        2,
-                                        {
-                                            "getTweenRatio"
-                                        }
-                                    },
-                                    {
-                                        6,
-                                        2,
-                                        {
-                                            "SpringScheduler"
-                                        }
-                                    }
-                                }
-                            },
-                            {
                                 16,
                                 1,
                                 {
@@ -11079,17 +12021,17 @@ local ObjectTree = {
                                         }
                                     },
                                     {
-                                        18,
-                                        2,
-                                        {
-                                            "initDependency"
-                                        }
-                                    },
-                                    {
                                         19,
                                         2,
                                         {
                                             "sharedState"
+                                        }
+                                    },
+                                    {
+                                        18,
+                                        2,
+                                        {
+                                            "initDependency"
                                         }
                                     },
                                     {
@@ -11106,136 +12048,6 @@ local ObjectTree = {
                                             "captureDependencies"
                                         }
                                     }
-                                }
-                            },
-                            {
-                                33,
-                                1,
-                                {
-                                    "Logging"
-                                },
-                                {
-                                    {
-                                        34,
-                                        2,
-                                        {
-                                            "logError"
-                                        }
-                                    },
-                                    {
-                                        37,
-                                        2,
-                                        {
-                                            "messages"
-                                        }
-                                    },
-                                    {
-                                        35,
-                                        2,
-                                        {
-                                            "logErrorNonFatal"
-                                        }
-                                    },
-                                    {
-                                        38,
-                                        2,
-                                        {
-                                            "parseError"
-                                        }
-                                    },
-                                    {
-                                        36,
-                                        2,
-                                        {
-                                            "logWarn"
-                                        }
-                                    }
-                                }
-                            },
-                            {
-                                22,
-                                1,
-                                {
-                                    "Instances"
-                                },
-                                {
-                                    {
-                                        29,
-                                        2,
-                                        {
-                                            "Out"
-                                        }
-                                    },
-                                    {
-                                        27,
-                                        2,
-                                        {
-                                            "OnChange"
-                                        }
-                                    },
-                                    {
-                                        32,
-                                        2,
-                                        {
-                                            "defaultProps"
-                                        }
-                                    },
-                                    {
-                                        31,
-                                        2,
-                                        {
-                                            "applyInstanceProps"
-                                        }
-                                    },
-                                    {
-                                        26,
-                                        2,
-                                        {
-                                            "New"
-                                        }
-                                    },
-                                    {
-                                        28,
-                                        2,
-                                        {
-                                            "OnEvent"
-                                        }
-                                    },
-                                    {
-                                        30,
-                                        2,
-                                        {
-                                            "Ref"
-                                        }
-                                    },
-                                    {
-                                        24,
-                                        2,
-                                        {
-                                            "Cleanup"
-                                        }
-                                    },
-                                    {
-                                        25,
-                                        2,
-                                        {
-                                            "Hydrate"
-                                        }
-                                    },
-                                    {
-                                        23,
-                                        2,
-                                        {
-                                            "Children"
-                                        }
-                                    }
-                                }
-                            },
-                            {
-                                48,
-                                2,
-                                {
-                                    "Types"
                                 }
                             },
                             {
@@ -11260,10 +12072,10 @@ local ObjectTree = {
                                         }
                                     },
                                     {
-                                        53,
+                                        50,
                                         2,
                                         {
-                                            "isSimilar"
+                                            "None"
                                         }
                                     },
                                     {
@@ -11274,13 +12086,6 @@ local ObjectTree = {
                                         }
                                     },
                                     {
-                                        51,
-                                        2,
-                                        {
-                                            "cleanup"
-                                        }
-                                    },
-                                    {
                                         52,
                                         2,
                                         {
@@ -11288,17 +12093,163 @@ local ObjectTree = {
                                         }
                                     },
                                     {
-                                        50,
-                                        2,
-                                        {
-                                            "None"
-                                        }
-                                    },
-                                    {
                                         56,
                                         2,
                                         {
                                             "xtypeof"
+                                        }
+                                    },
+                                    {
+                                        51,
+                                        2,
+                                        {
+                                            "cleanup"
+                                        }
+                                    },
+                                    {
+                                        53,
+                                        2,
+                                        {
+                                            "isSimilar"
+                                        }
+                                    }
+                                }
+                            },
+                            {
+                                33,
+                                1,
+                                {
+                                    "Logging"
+                                },
+                                {
+                                    {
+                                        35,
+                                        2,
+                                        {
+                                            "logErrorNonFatal"
+                                        }
+                                    },
+                                    {
+                                        36,
+                                        2,
+                                        {
+                                            "logWarn"
+                                        }
+                                    },
+                                    {
+                                        37,
+                                        2,
+                                        {
+                                            "messages"
+                                        }
+                                    },
+                                    {
+                                        38,
+                                        2,
+                                        {
+                                            "parseError"
+                                        }
+                                    },
+                                    {
+                                        34,
+                                        2,
+                                        {
+                                            "logError"
+                                        }
+                                    }
+                                }
+                            },
+                            {
+                                14,
+                                1,
+                                {
+                                    "Colour"
+                                },
+                                {
+                                    {
+                                        15,
+                                        2,
+                                        {
+                                            "Oklab"
+                                        }
+                                    }
+                                }
+                            },
+                            {
+                                48,
+                                2,
+                                {
+                                    "Types"
+                                }
+                            },
+                            {
+                                4,
+                                1,
+                                {
+                                    "Animation"
+                                },
+                                {
+                                    {
+                                        5,
+                                        2,
+                                        {
+                                            "Spring"
+                                        }
+                                    },
+                                    {
+                                        11,
+                                        2,
+                                        {
+                                            "packType"
+                                        }
+                                    },
+                                    {
+                                        9,
+                                        2,
+                                        {
+                                            "getTweenRatio"
+                                        }
+                                    },
+                                    {
+                                        12,
+                                        2,
+                                        {
+                                            "springCoefficients"
+                                        }
+                                    },
+                                    {
+                                        8,
+                                        2,
+                                        {
+                                            "TweenScheduler"
+                                        }
+                                    },
+                                    {
+                                        7,
+                                        2,
+                                        {
+                                            "Tween"
+                                        }
+                                    },
+                                    {
+                                        6,
+                                        2,
+                                        {
+                                            "SpringScheduler"
+                                        }
+                                    },
+                                    {
+                                        13,
+                                        2,
+                                        {
+                                            "unpackType"
+                                        }
+                                    },
+                                    {
+                                        10,
+                                        2,
+                                        {
+                                            "lerpType"
                                         }
                                     }
                                 }
@@ -11310,6 +12261,27 @@ local ObjectTree = {
                                     "State"
                                 },
                                 {
+                                    {
+                                        47,
+                                        2,
+                                        {
+                                            "unwrap"
+                                        }
+                                    },
+                                    {
+                                        41,
+                                        2,
+                                        {
+                                            "Computed"
+                                        }
+                                    },
+                                    {
+                                        44,
+                                        2,
+                                        {
+                                            "ForValues"
+                                        }
+                                    },
                                     {
                                         46,
                                         2,
@@ -11332,178 +12304,229 @@ local ObjectTree = {
                                         }
                                     },
                                     {
-                                        44,
-                                        2,
-                                        {
-                                            "ForValues"
-                                        }
-                                    },
-                                    {
-                                        47,
-                                        2,
-                                        {
-                                            "unwrap"
-                                        }
-                                    },
-                                    {
                                         42,
                                         2,
                                         {
                                             "ForKeys"
                                         }
-                                    },
+                                    }
+                                }
+                            },
+                            {
+                                22,
+                                1,
+                                {
+                                    "Instances"
+                                },
+                                {
                                     {
-                                        41,
+                                        32,
                                         2,
                                         {
-                                            "Computed"
+                                            "defaultProps"
+                                        }
+                                    },
+                                    {
+                                        25,
+                                        2,
+                                        {
+                                            "Hydrate"
+                                        }
+                                    },
+                                    {
+                                        28,
+                                        2,
+                                        {
+                                            "OnEvent"
+                                        }
+                                    },
+                                    {
+                                        30,
+                                        2,
+                                        {
+                                            "Ref"
+                                        }
+                                    },
+                                    {
+                                        24,
+                                        2,
+                                        {
+                                            "Cleanup"
+                                        }
+                                    },
+                                    {
+                                        23,
+                                        2,
+                                        {
+                                            "Children"
+                                        }
+                                    },
+                                    {
+                                        29,
+                                        2,
+                                        {
+                                            "Out"
+                                        }
+                                    },
+                                    {
+                                        31,
+                                        2,
+                                        {
+                                            "applyInstanceProps"
+                                        }
+                                    },
+                                    {
+                                        26,
+                                        2,
+                                        {
+                                            "New"
+                                        }
+                                    },
+                                    {
+                                        27,
+                                        2,
+                                        {
+                                            "OnChange"
                                         }
                                     }
                                 }
                             }
                         }
+                    },
+                    {
+                        60,
+                        2,
+                        {
+                            "services"
+                        }
+                    },
+                    {
+                        61,
+                        2,
+                        {
+                            "themeSystem"
+                        },
+                        {
+                            {
+                                62,
+                                2,
+                                {
+                                    "default"
+                                }
+                            }
+                        }
+                    },
+                    {
+                        57,
+                        2,
+                        {
+                            "data"
+                        }
                     }
                 }
             },
             {
-                92,
+                94,
                 2,
                 {
                     "utilities"
                 },
                 {
                     {
-                        96,
-                        2,
-                        {
-                            "customFunctions"
-                        }
-                    },
-                    {
-                        98,
-                        2,
-                        {
-                            "formatTime"
-                        }
-                    },
-                    {
-                        93,
-                        2,
-                        {
-                            "animate"
-                        }
-                    },
-                    {
-                        94,
-                        2,
-                        {
-                            "connections"
-                        }
-                    },
-                    {
-                        101,
-                        2,
-                        {
-                            "randomString"
-                        }
-                    },
-                    {
-                        100,
-                        2,
-                        {
-                            "getStringBounds"
-                        }
-                    },
-                    {
-                        97,
-                        2,
-                        {
-                            "drag"
-                        }
-                    },
-                    {
-                        95,
-                        2,
-                        {
-                            "customFont"
-                        }
-                    },
-                    {
-                        99,
-                        2,
-                        {
-                            "get"
-                        }
-                    },
-                    {
-                        104,
+                        106,
                         2,
                         {
                             "typecheck"
                         }
                     },
                     {
-                        103,
+                        100,
+                        2,
+                        {
+                            "formatTime"
+                        }
+                    },
+                    {
+                        96,
+                        2,
+                        {
+                            "connections"
+                        }
+                    },
+                    {
+                        97,
+                        2,
+                        {
+                            "customFont"
+                        }
+                    },
+                    {
+                        105,
                         2,
                         {
                             "tween"
                         }
                     },
                     {
-                        102,
+                        104,
                         2,
                         {
                             "references"
                         }
-                    }
-                }
-            },
-            {
-                84,
-                1,
-                {
-                    "layouts"
-                },
-                {
+                    },
                     {
-                        85,
+                        103,
                         2,
                         {
-                            "main"
+                            "randomString"
+                        }
+                    },
+                    {
+                        98,
+                        2,
+                        {
+                            "customFunctions"
+                        }
+                    },
+                    {
+                        99,
+                        2,
+                        {
+                            "drag"
+                        }
+                    },
+                    {
+                        101,
+                        2,
+                        {
+                            "get"
+                        }
+                    },
+                    {
+                        95,
+                        2,
+                        {
+                            "animate"
+                        }
+                    },
+                    {
+                        102,
+                        2,
+                        {
+                            "getStringBounds"
                         }
                     }
                 }
             },
             {
-                86,
+                88,
                 2,
                 {
                     "simpleElements"
                 },
                 {
                     {
-                        88,
-                        2,
-                        {
-                            "UICorner"
-                        }
-                    },
-                    {
-                        87,
-                        2,
-                        {
-                            "UIAspectRatioConstraint"
-                        }
-                    },
-                    {
                         91,
-                        2,
-                        {
-                            "UITextSizeConstraint"
-                        }
-                    },
-                    {
-                        89,
                         2,
                         {
                             "UIListLayout"
@@ -11513,7 +12536,207 @@ local ObjectTree = {
                         90,
                         2,
                         {
+                            "UICorner"
+                        }
+                    },
+                    {
+                        93,
+                        2,
+                        {
+                            "UITextSizeConstraint"
+                        }
+                    },
+                    {
+                        92,
+                        2,
+                        {
                             "UIPadding"
+                        }
+                    },
+                    {
+                        89,
+                        2,
+                        {
+                            "UIAspectRatioConstraint"
+                        }
+                    }
+                }
+            },
+            {
+                86,
+                1,
+                {
+                    "layouts"
+                },
+                {
+                    {
+                        87,
+                        2,
+                        {
+                            "main"
+                        }
+                    }
+                }
+            },
+            {
+                63,
+                1,
+                {
+                    "components"
+                },
+                {
+                    {
+                        69,
+                        2,
+                        {
+                            "dropdown"
+                        }
+                    },
+                    {
+                        74,
+                        2,
+                        {
+                            "label"
+                        }
+                    },
+                    {
+                        71,
+                        2,
+                        {
+                            "hover"
+                        }
+                    },
+                    {
+                        65,
+                        2,
+                        {
+                            "button"
+                        }
+                    },
+                    {
+                        81,
+                        2,
+                        {
+                            "slider"
+                        }
+                    },
+                    {
+                        72,
+                        2,
+                        {
+                            "keybind"
+                        }
+                    },
+                    {
+                        67,
+                        2,
+                        {
+                            "colorpicker"
+                        }
+                    },
+                    {
+                        85,
+                        2,
+                        {
+                            "warn"
+                        }
+                    },
+                    {
+                        73,
+                        2,
+                        {
+                            "keybindList"
+                        }
+                    },
+                    {
+                        84,
+                        2,
+                        {
+                            "toggle"
+                        }
+                    },
+                    {
+                        83,
+                        2,
+                        {
+                            "textbox"
+                        }
+                    },
+                    {
+                        76,
+                        2,
+                        {
+                            "logPage"
+                        }
+                    },
+                    {
+                        70,
+                        2,
+                        {
+                            "group"
+                        }
+                    },
+                    {
+                        80,
+                        2,
+                        {
+                            "paragraph"
+                        }
+                    },
+                    {
+                        79,
+                        2,
+                        {
+                            "orbs"
+                        }
+                    },
+                    {
+                        78,
+                        2,
+                        {
+                            "notification"
+                        }
+                    },
+                    {
+                        75,
+                        2,
+                        {
+                            "list"
+                        }
+                    },
+                    {
+                        77,
+                        2,
+                        {
+                            "module"
+                        }
+                    },
+                    {
+                        82,
+                        2,
+                        {
+                            "tab"
+                        }
+                    },
+                    {
+                        64,
+                        2,
+                        {
+                            "announcement"
+                        }
+                    },
+                    {
+                        68,
+                        2,
+                        {
+                            "divider"
+                        }
+                    },
+                    {
+                        66,
+                        2,
+                        {
+                            "buttongroup"
                         }
                     }
                 }
@@ -11525,100 +12748,102 @@ local ObjectTree = {
 -- Line offsets for debugging (only included when minifyTables is false)
 local LineOffsets = {
     8,
-    324,
-    334,
-    [5] = 408,
-    [6] = 626,
-    [7] = 722,
-    [8] = 858,
-    [9] = 938,
-    [10] = 982,
-    [11] = 1144,
-    [12] = 1243,
-    [13] = 1329,
-    [15] = 1418,
-    [17] = 1473,
-    [18] = 1530,
-    [19] = 1559,
-    [20] = 1583,
-    [21] = 1643,
-    [23] = 1673,
-    [24] = 1822,
-    [25] = 1843,
-    [26] = 1863,
-    [27] = 1899,
-    [28] = 1934,
-    [29] = 1971,
-    [30] = 2015,
-    [31] = 2045,
-    [32] = 2172,
-    [34] = 2283,
-    [35] = 2316,
-    [36] = 2351,
-    [37] = 2375,
-    [38] = 2421,
-    [39] = 2444,
-    [41] = 2591,
-    [42] = 2705,
-    [43] = 2954,
-    [44] = 3264,
-    [45] = 3511,
-    [46] = 3595,
-    [47] = 3658,
-    [48] = 3674,
-    [50] = 3821,
-    [51] = 3835,
-    [52] = 3889,
-    [53] = 3900,
-    [54] = 3918,
-    [55] = 3931,
-    [56] = 3960,
-    [57] = 3980,
-    [58] = 4054,
-    [59] = 4293,
-    [60] = 4316,
-    [61] = 4328,
-    [62] = 4390,
-    [64] = 4423,
-    [65] = 4564,
-    [66] = 4820,
-    [67] = 5536,
-    [68] = 5582,
-    [69] = 6261,
-    [70] = 6513,
-    [71] = 6938,
-    [72] = 7033,
-    [73] = 7144,
-    [74] = 7204,
-    [75] = 7355,
-    [76] = 7513,
-    [77] = 7817,
-    [78] = 7924,
-    [79] = 8077,
-    [80] = 8555,
-    [81] = 8765,
-    [82] = 9180,
-    [83] = 9680,
-    [85] = 9705,
-    [86] = 10273,
-    [87] = 10283,
-    [88] = 10295,
-    [89] = 10304,
-    [90] = 10316,
-    [91] = 10351,
-    [92] = 10360,
-    [93] = 10370,
-    [94] = 10377,
-    [95] = 10407,
-    [96] = 10423,
-    [97] = 10600,
-    [98] = 10649,
-    [99] = 10663,
-    [100] = 10670,
-    [101] = 10681,
-    [102] = 10691,
-    [103] = 10741,
-    [104] = 10748
+    942,
+    952,
+    [5] = 1026,
+    [6] = 1244,
+    [7] = 1340,
+    [8] = 1476,
+    [9] = 1556,
+    [10] = 1600,
+    [11] = 1762,
+    [12] = 1861,
+    [13] = 1947,
+    [15] = 2036,
+    [17] = 2091,
+    [18] = 2148,
+    [19] = 2177,
+    [20] = 2201,
+    [21] = 2261,
+    [23] = 2291,
+    [24] = 2440,
+    [25] = 2461,
+    [26] = 2481,
+    [27] = 2517,
+    [28] = 2552,
+    [29] = 2589,
+    [30] = 2633,
+    [31] = 2663,
+    [32] = 2790,
+    [34] = 2901,
+    [35] = 2934,
+    [36] = 2969,
+    [37] = 2993,
+    [38] = 3039,
+    [39] = 3062,
+    [41] = 3209,
+    [42] = 3323,
+    [43] = 3572,
+    [44] = 3882,
+    [45] = 4129,
+    [46] = 4213,
+    [47] = 4276,
+    [48] = 4292,
+    [50] = 4439,
+    [51] = 4453,
+    [52] = 4507,
+    [53] = 4518,
+    [54] = 4536,
+    [55] = 4549,
+    [56] = 4578,
+    [57] = 4598,
+    [58] = 4672,
+    [59] = 5045,
+    [60] = 5068,
+    [61] = 5080,
+    [62] = 5319,
+    [64] = 5352,
+    [65] = 5493,
+    [66] = 5710,
+    [67] = 5962,
+    [68] = 6696,
+    [69] = 6742,
+    [70] = 7420,
+    [71] = 7672,
+    [72] = 7758,
+    [73] = 8177,
+    [74] = 8272,
+    [75] = 8387,
+    [76] = 8447,
+    [77] = 8595,
+    [78] = 8753,
+    [79] = 9057,
+    [80] = 9164,
+    [81] = 9318,
+    [82] = 9764,
+    [83] = 9974,
+    [84] = 10360,
+    [85] = 10865,
+    [87] = 10890,
+    [88] = 11464,
+    [89] = 11474,
+    [90] = 11486,
+    [91] = 11495,
+    [92] = 11507,
+    [93] = 11542,
+    [94] = 11551,
+    [95] = 11561,
+    [96] = 11568,
+    [97] = 11598,
+    [98] = 11614,
+    [99] = 11809,
+    [100] = 11858,
+    [101] = 11872,
+    [102] = 11879,
+    [103] = 11890,
+    [104] = 11900,
+    [105] = 11950,
+    [106] = 11957
 }
 
 -- Misc AOT variable imports
