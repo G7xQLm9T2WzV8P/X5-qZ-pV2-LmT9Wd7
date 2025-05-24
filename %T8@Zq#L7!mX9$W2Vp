@@ -194,7 +194,7 @@ ESP = {
                 end
 
                 if isPreview and Character then
-                    Camera = ESP_SETTINGS.EspPreview.Viewport.CurrentCamera
+                    Camera = ESP_SETTINGS.EspPreview.Viewport
                 else
                     Camera = game.Workspace.CurrentCamera
                 end
@@ -223,10 +223,25 @@ ESP = {
                     if RootPart and Head and ShouldShow then
                         local Pos, OnScreen = Camera:WorldToViewportPoint(RootPart.Position)
                         if OnScreen then
-                            local Hrp2D = Camera:WorldToViewportPoint(RootPart.Position)
-                            local CharSize = (Camera:WorldToViewportPoint(RootPart.Position - Vector3.new(0, 3, 0)).Y - Camera:WorldToViewportPoint(RootPart.Position + Vector3.new(0, 2.6, 0)).Y) / 2
-                            local boxSize = Vector2.new(math.floor(CharSize * 1.8), math.floor(CharSize * 1.9))
-                            local boxPosition = Vector2.new(math.floor(Hrp2D.X - CharSize * 1.8 / 2), math.floor(Hrp2D.Y - CharSize * 1.6 / 2))
+                          local Hrp2D
+                          if isPreview then
+                              Hrp2D = Camera.AbsolutePoint
+                          else
+                              Hrp2D = Camera:WorldToViewportPoint(RootPart.Position)
+                          end
+
+                          local CharSize = (Camera:WorldToViewportPoint(RootPart.Position - Vector3.new(0, 3, 0)).Y 
+                                            - Camera:WorldToViewportPoint(RootPart.Position + Vector3.new(0, 2.6, 0)).Y) / 2
+
+                          local boxSize = Vector2.new(math.floor(CharSize * 1.8), math.floor(CharSize * 1.9))
+
+                          local boxPosition
+                          if isPreview then
+                              boxPosition = Vector2.new(math.floor(Hrp2D.X - CharSize * 1.8 / 2), math.floor(Hrp2D.Y - CharSize * 1.6 / 2))
+                          else
+                              boxPosition = Vector2.new(math.floor(Hrp2D.X - CharSize * 1.8 / 2), math.floor(Hrp2D.Y - CharSize * 1.6 / 2))
+                          end
+
 
                             local hrp2D = Hrp2D
 
