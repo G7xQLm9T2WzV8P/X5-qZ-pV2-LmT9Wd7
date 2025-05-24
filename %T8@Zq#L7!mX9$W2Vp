@@ -229,7 +229,7 @@ ESP = {
                         if OnScreen then
                           local Hrp2D
                           if isPreview then
-                              Hrp2D = Camera.Parent.AbsolutePoint
+                              Hrp2D = Camera.Parent.AbsolutePosition
                           else
                               Hrp2D = Camera:WorldToViewportPoint(RootPart.Position)
                           end
