@@ -30,6 +30,7 @@ ESP = {
         TracerThickness = 2,
         SkeletonsColor = Color3.new(1, 1, 1),
         TracerPosition = "Bottom",
+        EspPreviewCharacter = nil,
         Maps = {
 
         }
@@ -171,11 +172,14 @@ ESP = {
         end,
 
         UpdateEsp = function() -- // Main ESP function
+            local ESP_SETTINGS = ESP.Settings
+            if ESP_SETTINGS.EspPreviewCharacter and not ESP.Cache[ESP_SETTINGS.EspPreviewCharacter] then
+                table.insert(ESP.Cache, ESP_SETTINGS.EspPreviewCharacter)
+            end
+            
             for Player, Esp in pairs(ESP.Cache) do
 
-                local Character, Team = Player.Character, Player.Team
-
-                local ESP_SETTINGS = ESP.Settings
+                local Character, Team = Player.Character or Player, Player.Team or nil
 
                 local esp = Esp
 
