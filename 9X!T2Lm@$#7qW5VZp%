@@ -11593,6 +11593,10 @@ return function(property, bindableEvent)
 			camera.Parent = get(viewport)
 			local localPlayer = Players.LocalPlayer
 			local character = localPlayer.Character or localPlayer.CharacterAdded:Wait()
+			repeat
+				task.wait()
+			until
+			character:FindFirstChild("HumanoidRootPart")
 			local oldArc = character.Archivable
 			character.Archivable = true
 			local clone = character:Clone()
