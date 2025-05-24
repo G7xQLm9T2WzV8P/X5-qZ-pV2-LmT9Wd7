@@ -172,6 +172,8 @@ ESP = {
         end,
 
         UpdateEsp = function() -- // Main ESP function
+            local oldthreadidentity = getthreadidentity()
+            setthreadidentity(8)
             local ESP_SETTINGS = ESP.Settings
             if ESP_SETTINGS.EspPreviewCharacter and not ESP.Cache[ESP_SETTINGS.EspPreviewCharacter] then
                 ESP.Functions.CacheEsp(ESP_SETTINGS.EspPreviewCharacter)
@@ -180,20 +182,26 @@ ESP = {
             for Player, Esp in pairs(ESP.Cache) do
                 local Character = Player
                 local Team = nil
+                local isPreview = false
 
                 if Player:IsA("Player") then
                     Character = Player.Character
                     Team = Player.Team
+                else
+                    isPreview = true
                 end
-                    
+
+                if isPreview and Character then
+                    Camera = Character.Parent.Parent.Camera
+                else
+                    Camera = game.Workspace.CurrentCamera
+                end
 
                 local esp = Esp
-
                 local camera = Camera
-
                 local localPlayer = Client
-
                 local player = Player
+
 
                 if Character and (not ESP.Settings.Teamcheck or (Team and Team ~= Client.Team)) then
                     local RootPart = Character:FindFirstChild("Torso") or Character:FindFirstChild("HumanoidRootPart") or Character:FindFirstChild("Body")
@@ -207,7 +215,7 @@ ESP = {
 
                     
                     if RootPart and Head and ShouldShow then
-                        local _, OnScreen = Camera:WorldToViewportPoint(RootPart.Position)
+                        local Pos, OnScreen = Camera:WorldToViewportPoint(RootPart.Position)
                         if OnScreen then
                             local Hrp2D = Camera:WorldToViewportPoint(RootPart.Position)
                             local CharSize = (Camera:WorldToViewportPoint(RootPart.Position - Vector3.new(0, 3, 0)).Y - Camera:WorldToViewportPoint(RootPart.Position + Vector3.new(0, 2.6, 0)).Y) / 2
@@ -525,6 +533,7 @@ ESP = {
                     esp.boxLines = {}
                 end
             end
+            setthreadidentity(oldthreadidentity)
         end,
     }
 }
