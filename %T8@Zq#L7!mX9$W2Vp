@@ -226,6 +226,8 @@ ESP = {
                                   screenPos.Y * FramePosition.Y - 58
                               )
 
+                              print("yas quen")
+
                           else
                               Hrp2D = Camera:WorldToViewportPoint(RootPart.Position)
                           end
