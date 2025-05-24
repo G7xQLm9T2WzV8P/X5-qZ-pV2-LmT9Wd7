@@ -99,9 +99,7 @@ ESP = {
                 box = FunctionDirectory.CreateDrawing("Square", {
                     Color = SettingsDirectory.BoxColor,
                     Thickness = 1,
-                    Filled = false
-
-                    
+                    Filled = false                    
                 }),
 
                 name = FunctionDirectory.CreateDrawing("Text", {
@@ -176,6 +174,7 @@ ESP = {
             setthreadidentity(8)
             local ESP_SETTINGS = ESP.Settings
             if ESP_SETTINGS.EspPreviewCharacter and not ESP.Cache[ESP_SETTINGS.EspPreviewCharacter] then
+                print("cached")
                 ESP.Functions.CacheEsp(ESP_SETTINGS.EspPreview.Character)
             end
 
@@ -188,7 +187,6 @@ ESP = {
                     print(Player:GetFullName())
                     isPreview = true
                 else    
-                    warn(Player:GetFullName())
                     Character = Player.Character
                     Team = Player.Team
                 end
