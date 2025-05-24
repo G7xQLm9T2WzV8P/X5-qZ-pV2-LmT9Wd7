@@ -184,13 +184,11 @@ ESP = {
                 local Team = nil
                 local isPreview = false
 
-                if Player:IsA("Player") then
+                if Player:IsA("Model") then
+                    isPreview = true
+                else    
                     Character = Player.Character
                     Team = Player.Team
-                    print("RICCHIONE")
-                else
-                    print("NOOO BIG CHUNGUS")
-                    isPreview = true
                 end
 
                 if isPreview and Character then
