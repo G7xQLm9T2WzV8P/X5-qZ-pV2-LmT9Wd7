@@ -171,94 +171,101 @@ ESP = {
         end,
 
         UpdateEsp = function() -- // Main ESP function
-            local oldthreadidentity = getthreadidentity()
-            setthreadidentity(8)
-            local ESP_SETTINGS = ESP.Settings
-            if ESP_SETTINGS.EspPreview and not ESP_SETTINGS.SetEspPreview then
-                ESP.Functions.CacheEsp(ESP_SETTINGS.EspPreview.Character)
-            end
+local oldthreadidentity = getthreadidentity()
+setthreadidentity(8)
+local ESP_SETTINGS = ESP.Settings
 
-            for Player, Esp in pairs(ESP.Cache) do
-                local Character = Player
-                local Team = nil
-                local isPreview = false
+if ESP_SETTINGS.EspPreview and not ESP_SETTINGS.SetEspPreview then
+    print("[DEBUG] Caching ESP Preview Character")
+    ESP.Functions.CacheEsp(ESP_SETTINGS.EspPreview.Character)
+end
 
-                if Player.Parent and Player.Parent:IsA("WorldModel") then
-                    isPreview = true
-                else    
-                    Character = Player.Character
-                    Team = Player.Team
-                end
+for Player, Esp in pairs(ESP.Cache) do
+    local Character = Player
+    local Team = nil
+    local isPreview = false
 
-                if isPreview and Character then
-                    Camera = ESP_SETTINGS.EspPreview.Viewport.CurrentCamera
+    if Player.Parent and Player.Parent:IsA("WorldModel") then
+        isPreview = true
+        print("[DEBUG] Preview Mode Detected for", Player)
+    else    
+        Character = Player.Character
+        Team = Player.Team
+    end
+
+    if isPreview and Character then
+        Camera = ESP_SETTINGS.EspPreview.Viewport.CurrentCamera
+    else
+        Camera = game.Workspace.CurrentCamera
+    end
+
+    local esp = Esp
+    local camera = Camera
+    local localPlayer = Client
+    local player = Player
+
+    if Character and (not ESP.Settings.Teamcheck or (Team and Team ~= Client.Team)) then
+        local RootPart = Character:FindFirstChild("Torso") or Character:FindFirstChild("HumanoidRootPart") or Character:FindFirstChild("Body")
+        local Head = Character:FindFirstChild("MouthPart") or Character:FindFirstChild("Body") or Character:FindFirstChild("Head") or Character:FindFirstChild("Eyes") or Character:FindFirstChild("Jaw") or Character:FindFirstChild("FakeHead")
+        local Humanoid = Character:FindFirstChild("Humanoid")
+        local ShouldShow = true
+
+        if RootPart and Head and ShouldShow then
+            local screenPos, OnScreen = Camera:WorldToViewportPoint(RootPart.Position)
+            print(string.format("[DEBUG] %s | OnScreen: %s | screenPos: (%.2f, %.2f, %.2f)", tostring(Player), tostring(OnScreen), screenPos.X, screenPos.Y, screenPos.Z))
+
+            if OnScreen then
+                local Hrp2D
+
+                if isPreview then
+                    local frameSize = ESP_SETTINGS.EspPreview.Viewport.AbsoluteSize
+
+                    Hrp2D = Vector2.new(
+                        screenPos.X * frameSize.X,
+                        screenPos.Y * frameSize.Y
+                    )
+
+                    print(string.format("[DEBUG] Preview Hrp2D: (%.2f, %.2f)", Hrp2D.X, Hrp2D.Y))
                 else
-                    Camera = game.Workspace.CurrentCamera
+                    local worldPoint = Camera:WorldToViewportPoint(RootPart.Position)
+                    Hrp2D = Vector2.new(worldPoint.X, worldPoint.Y)
+
+                    print(string.format("[DEBUG] World Hrp2D: (%.2f, %.2f)", Hrp2D.X, Hrp2D.Y))
                 end
 
-                local esp = Esp
-                local camera = Camera
-                local localPlayer = Client
-                local player = Player
+                local bottomY = Camera:WorldToViewportPoint(RootPart.Position - Vector3.new(0, 3, 0)).Y
+                local topY = Camera:WorldToViewportPoint(RootPart.Position + Vector3.new(0, 2.6, 0)).Y
+                local CharSize = (bottomY - topY) / 2
+
+                print(string.format("[DEBUG] CharSize: %.2f", CharSize))
+
+                local boxSize = Vector2.new(math.floor(CharSize * 1.8), math.floor(CharSize * 1.9))
+                local boxPosition = Vector2.new(
+                    math.floor(Hrp2D.X - CharSize * 1.8 / 2),
+                    math.floor(Hrp2D.Y - CharSize * 1.6 / 2)
+                )
+
+                print(string.format("[DEBUG] boxSize: (%.2f, %.2f)", boxSize.X, boxSize.Y))
+                print(string.format("[DEBUG] boxPosition: (%.2f, %.2f)", boxPosition.X, boxPosition.Y))
+
+                if ESP_SETTINGS.ShowChams and ESP_SETTINGS.Enabled then
+                    if not esp.highlight then
+                        esp.highlight = Instance.new("Highlight")
+                        esp.highlight.Parent = Character
+                        esp.highlight.FillTransparency = 0
+                        esp.highlight.FillColor = Color3.fromHex("#a49ae6")
+                        esp.highlight.OutlineTransparency = 1
+                        print("[DEBUG] Created highlight for", Player)
+                    end
+                    esp.highlight.Enabled = true
+                else
+                    if esp.highlight then
+                        esp.highlight.Enabled = false
+                        print("[DEBUG] Disabled highlight for", Player)
+                    end
+                end
 
 
-                if Character and (not ESP.Settings.Teamcheck or (Team and Team ~= Client.Team)) then
-                    local RootPart = Character:FindFirstChild("Torso") or Character:FindFirstChild("HumanoidRootPart") or Character:FindFirstChild("Body")
-                    local Head = Character:FindFirstChild("MouthPart") or Character:FindFirstChild("Body") or Character:FindFirstChild("Head") or Character:FindFirstChild("Eyes") or Character:FindFirstChild("Jaw") or Character:FindFirstChild("FakeHead")
-                    local Humanoid = Character:FindFirstChild("Humanoid")
-                    --local IsBehindWall = ESP.Settings.WallCheck and ESP.Functions.IsPlayerBehindWall(Player)
-                    local ShouldShow = true
-
-                    local rootPart = RootPart
-
-
-                    
-                    if RootPart and Head and ShouldShow then
-                        local screenPos, OnScreen = Camera:WorldToViewportPoint(RootPart.Position)  
-
-                        if OnScreen then
-                          local Hrp2D
-                          if isPreview then
-                              local frameSize = ESP_SETTINGS.EspPreview.Viewport.AbsoluteSize
-
-                              Hrp2D = Vector2.new(
-                                  screenPos.X * frameSize.X,
-                                  screenPos.Y * frameSize.Y
-                              )
-
-                          else
-                              Hrp2D = Camera:WorldToViewportPoint(RootPart.Position)
-                          end
-
-                          local CharSize = (Camera:WorldToViewportPoint(RootPart.Position - Vector3.new(0, 3, 0)).Y 
-                                            - Camera:WorldToViewportPoint(RootPart.Position + Vector3.new(0, 2.6, 0)).Y) / 2
-
-                          local boxSize = Vector2.new(math.floor(CharSize * 1.8), math.floor(CharSize * 1.9))
-
-                          local boxPosition
-                          if isPreview then
-                              boxPosition = Vector2.new(math.floor(Hrp2D.X - CharSize * 1.8 / 2), math.floor(Hrp2D.Y - CharSize * 1.6 / 2))
-                          else
-                              boxPosition = Vector2.new(math.floor(Hrp2D.X - CharSize * 1.8 / 2), math.floor(Hrp2D.Y - CharSize * 1.6 / 2))
-                          end
-
-
-                            local hrp2D = Hrp2D
-
-                            if ESP_SETTINGS.ShowChams and ESP_SETTINGS.Enabled then
-                            if not esp.highlight then
-                                esp.highlight = Instance.new("Highlight")
-                                esp.highlight.Parent = Character
-                                esp.highlight.FillTransparency = 0  
-                                esp.highlight.FillColor = Color3.fromHex("#a49ae6")
-                                esp.highlight.OutlineTransparency = 1  
-                            end
-                            esp.highlight.Enabled = true  
-                        else
-                            if esp.highlight then
-                                esp.highlight.Enabled = false  
-                            end
-                        end
         
                             if ESP_SETTINGS.ShowName and ESP_SETTINGS.Enabled then
                                 esp.name.Visible = true
@@ -290,7 +297,7 @@ ESP = {
                                     if #esp.boxLines == 0 then
                                         for i = 1, 16 do
                                             local boxLine = ESP.Functions.CreateDrawing("Line", {
-                                                Thickness = 1.5,
+                                                Thickness = 2.5,
                                                 Color = ESP_SETTINGS.BoxColor,
                                                 Transparency = 1
                                             })
