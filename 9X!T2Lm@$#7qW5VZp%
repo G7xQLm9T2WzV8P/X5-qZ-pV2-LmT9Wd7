@@ -10,7 +10,6 @@ local data = Bundles.data
 local theme = Bundles.themeSystem
 local icons = Bundles.icons
 local services = Bundles.services
-local HttpService = services.HttpService
 local RunService = services.RunService
 local UserInputService = services.UserInputService
 local fusion = Bundles.Fusion
@@ -32,7 +31,7 @@ local LPH_NO_VIRTUALIZE = LPH_NO_VIRTUALIZE or function(v)
 end
 
 -- VERSION
-local VERSION = "1.5.0"
+local VERSION = "1.6.0"
 -- VERSION
 
 local function addComponent(name, parent, properties)
@@ -86,8 +85,8 @@ function createSide(tab, parent)
 	function components:ButtonGroup()
 			return addComponent("buttongroup", components.Parent, {tab = tab})
 		end
-	function components:List(name, canClose)
-		local listModule, visible, _name = addComponent("list", components.Parent, {Name = name, CanClose = canClose})
+	function components:List(name, destroyable)
+		local listModule, visible, _name = addComponent("list", components.Parent, {Name = name, Destroyable = destroyable})
 		local returnTable = createSide("list?", listModule)
 		function returnTable:Visible()
 			visible:set(true)
@@ -167,7 +166,7 @@ function chrono:Window(windowProperty)
 
 	-- Data
 
-	data.add({string = ""}, "selectedTab")
+	local selectedTab = data.add({string = ""}, "selectedTab")
 	data.add({boolean = false}, "isFirst")
 	local setTheme = data.add({tbl = {}}, "setTheme")
 	local visible = data.add({boolean = true}, "visible")
@@ -187,9 +186,19 @@ function chrono:Window(windowProperty)
 	local runserviceFunctions = data.add({list = {}}, "runserviceFunctions", true)
 	local userinputserviceFunctions = data.add({list = {}}, "userinputserviceFunctions", true)
 	local flags = data.find("flags")
-	local configLoaded = data.add({boolean = false}, "configLoaded")
+	data.add({boolean = false}, "configLoaded")
 	local useConfig = data.add({boolean = false}, "useConfig")
+	data.add({list = {}}, "moduleStack", true)
+	local viewportVisible = data.add({boolean = true}, "viewportVisible")
+	local viewportThings = data.add({}, "viewportThings", true)
 	local windowData = data.add({data = windowProperty})
+
+	-- Sounds
+
+	local sounds = utilities.sounds
+	sounds.Studio = RunService:IsStudio()
+	sounds.addSound("hover", "rbxassetid://119354387183704")
+	sounds.addSound("select", "rbxassetid://111174530730534")
 
 	-- Mouse Position
 
@@ -198,12 +207,12 @@ function chrono:Window(windowProperty)
 	end)
 
 	local renderStepped = LPH_NO_VIRTUALIZE(function()
-		for i,v in runserviceFunctions.list do
+		for _,v in runserviceFunctions.list do
 			task.spawn(v)
 		end
 	end)
 	local inputBegan = LPH_NO_VIRTUALIZE(function(input, gameProcessed)
-		for i,v in userinputserviceFunctions.list do
+		for _,v in userinputserviceFunctions.list do
 			task.spawn(v, input, gameProcessed)
 		end
 	end)
@@ -260,24 +269,6 @@ function chrono:Window(windowProperty)
 		theme.set(theme.create(windowProperty.Theme.Name, windowProperty.Theme.Colors, nil, nil, true))
 	end
 
-	-- Configs
-
-	--[[local hasAutoload = flagCreator.init()
-	if windowProperty.Configuration then
-		didPass, failedItems = typecheck(windowProperty.Configuration, {
-			Name = "",
-			FlagValues = {}
-		})
-		assert(didPass, table.concat(failedItems, "\n"))
-		local uid = flagCreator.create(windowProperty.Configuration.Name, nil, nil, windowProperty.Configuration.FlagValues, true, windowProperty.Configuration.Lock, windowProperty.Configuration.AutoLoad)
-		if not hasAutoload then
-			flagCreator.set(uid)
-			for i,v in windowProperty.Configuration.FlagValues do
-				flagCreator.preregister(i, v)
-			end
-		end
-	end]]
-
 	-- Flags
 
 	if windowProperty.UseConfig then
@@ -286,7 +277,7 @@ function chrono:Window(windowProperty)
 
 	chrono.flags = {}
 	setmetatable(chrono.flags, {
-		__index = function(tbl, flag)
+		__index = function(_, flag)
 			local _list = get(flags.list)
 			if _list[flag] then
 				return _list[flag].user
@@ -313,6 +304,7 @@ function chrono:Window(windowProperty)
 		local left, right = tabFrame.left, tabFrame.right
 
 		tabs[tab.uid] = {}
+		tabs[tab.uid].uid = tab.uid
 		tabs[tab.uid].Left = createSide(tab, left)
 		tabs[tab.uid].Right = createSide(tab, right)
 		return tabs[tab.uid]
@@ -927,8 +919,18 @@ function chrono:Window(windowProperty)
 			end
 		})]]
 	end
-
-
+	function chrono:GetViewportData()
+		return viewportThings
+	end
+	function chrono:ESPPreviewVisible()
+		viewportVisible:update("boolean", true)
+	end
+	function chrono:ESPPreviewInvisible()
+		viewportVisible:update("boolean", false)
+	end
+	function chrono:CurrentTab()
+		return get(selectedTab.string)
+	end
 
 	if customFunctions.getgenv then
 		customFunctions.getgenv().chronoInstance = chrono
@@ -5062,7 +5064,8 @@ end)() end,
     ['left'] = "rbxassetid://10709768114",
     ['right'] = "rbxassetid://10709768347",
     ['log'] = "rbxassetid://121839622982024",
-    ['settings'] = "rbxassetid://10709810948"
+    ['settings'] = "rbxassetid://10709810948",
+    ['dash'] = "rbxassetid://10734896206"
 }
 end)() end,
     [60] = function()local wax,script,require=ImportGlobals(60)local ImportGlobals return (function(...)local cF = require(script.Parent.Parent.utilities.customFunctions)
@@ -5122,6 +5125,17 @@ function themeSystem.find(uid)
     end
     return false
 end
+
+themeSystem.raw = {}
+setmetatable(themeSystem.raw, {
+    __index = function(tbl, key)
+        local theme = get(currentTheme)
+        if theme[key] then
+            return theme[key]
+        end
+        return nil
+    end
+})
 
 function themeSystem.create(name, palette, uid, fromFile, fromSet)
     fromFile = fromFile or false
@@ -5358,7 +5372,6 @@ return function(property)
 	local fusion = bundles.Fusion
 		local new = fusion.New
 		local children = fusion.Children
-		local computed = fusion.Computed
 		local value = fusion.Value
 		local onevent = fusion.OnEvent
 
@@ -5507,6 +5520,7 @@ return function(property)
 	local animate = utilities.animate
 	local typecheck = utilities.typecheck
 	local customFont = utilities.customFont
+	local sounds = utilities.sounds
 
 	local simpleElements = require(chrono.simpleElements)
 	local UIListLayout = simpleElements.UIListLayout
@@ -5561,6 +5575,7 @@ return function(property)
 
 	local down = value(false)
 	local hover = value(false)
+	local hoverSound
 
 	-- Button
 
@@ -5588,10 +5603,12 @@ return function(property)
 		end,
 		[onevent "MouseEnter"] = function()
 			hover:set(true)
+			hoverSound = sounds.play("hover")
 		end,
 		[onevent "MouseLeave"] = function()
 			down:set(false)
 			hover:set(false)
+			hoverSound:Destroy()
 		end,
 
 		[onevent "Activated"] = function()
@@ -5712,7 +5729,6 @@ return function(property)
 	local Bundles = require(chrono.Bundles)
 	local data = Bundles.data
 	local theme = Bundles.themeSystem
-	local icons = Bundles.icons
 	local Fusion = Bundles.Fusion
 		local new = Fusion.New
 		local children = Fusion.Children
@@ -5734,7 +5750,6 @@ return function(property)
 	local HA = Enum.HorizontalAlignment
 	local VA = Enum.VerticalAlignment
 	local UIPadding = simpleElements.UIPadding
-	local UICorner = simpleElements.UICorner
 
     -- Property
 
@@ -5784,7 +5799,6 @@ return function(property)
 
         -- Data
 
-        local selectedTab = data.find("selectedTab")
         local hideAll = data.find("hideAll")
         local componentY = data.find("componentY").number
         local button = data.add(_property)
@@ -5967,7 +5981,6 @@ return function(property)
 	local icons = Bundles.icons
 	local flagCreator = Bundles.flags
 	local services = Bundles.services
-	local RunService = services.RunService
 	local UserInputService = services.UserInputService
 	local Fusion = Bundles.Fusion
 		local new = Fusion.New
@@ -5985,7 +5998,7 @@ return function(property)
 	local customFont = utilities.customFont
 	local randomString = utilities.randomString
 	local connections = utilities.connections
-	local references = utilities.references
+	local sounds = utilities.sounds
 
 	local simpleElements = require(chrono.simpleElements)
 	local UIListLayout = simpleElements.UIListLayout
@@ -6084,6 +6097,15 @@ return function(property)
 
 	local dropped = value(false)
 	local hover = value(false)
+	local hoverSound,toggleSound
+	connections.add(observe(hover):onChange(function()
+		if get(hover) then
+			if hoverSound then
+				hoverSound:Destroy()
+			end
+			hoverSound = sounds.play("hover")
+		end
+	end))
 
 	local hueAmount = value(0)
 	local saturationAmount = value(0)
@@ -6177,7 +6199,7 @@ return function(property)
 							UIListLayout(SO.LayoutOrder,FD.Horizontal,HA.Center,VA.Center, UDim.new(0,3)),
 							new "TextLabel" {
 								FontFace = customFont("Inter", Enum.FontWeight.Regular),
-								Size = UDim2.new(1,-23,1),
+								Size = UDim2.new(1,-23,1,0),
 								BackgroundTransparency = 1,
 								TextColor3 = theme.text,
 								TextSize = 16,
@@ -6455,13 +6477,15 @@ return function(property)
 											local _old = table.concat(a, ", ")
 											local s,result = pcall(function()
 												local b = string.split(_rgb, ",")
-												assert(#b == 2)
-												table.foreach(b, function(i,v)
+												if #b == 2 then
+													error(false)
+												end
+												for i,v in b do
 													if not tonumber(v) then
 														return nil
 													end
 													b[i] = math.clamp(v, 0, 255)
-												end)
+												end
 												return Color3.fromRGB(b[1],b[2],b[3])
 											end)
 											if s and result then
@@ -6603,9 +6627,9 @@ return function(property)
 			if file.color ~= nil then
 				if string.find(file.color, ",") then
 					local a = string.split(file.color:gsub(" ", ""), ",")
-					table.foreach(a, function(i,v)
+					for i,v in a do
 						a[i] = tonumber(v)
-					end)
+					end
 					color:set(Color3.new(unpack(a)))
 				else
 					color:set(Color3.fromHex(`#{string.gsub(file.color,"#","")}`))
@@ -6701,17 +6725,13 @@ return function(property)
 	local Fusion = Bundles.Fusion
 		local new = Fusion.New
 		local children = Fusion.Children
-		local value = Fusion.Value
-		local observe = Fusion.Observer
 		local computed = Fusion.Computed
 
 	local utilities = require(darius.utilities)
 	local get = utilities.get
-	local animate = utilities.animate
 
     -- Data
 
-	local divider = data.add(property)
 	local hideAll = data.find("hideAll")
 
 	-- Properties
@@ -6762,7 +6782,7 @@ return function(property)
 	local typecheck = utilities.typecheck
 	local customFont = utilities.customFont
 	local connections = utilities.connections
-	local references = utilities.references
+	local sounds = utilities.sounds
 
 	local simpleElements = require(chrono.simpleElements)
 	local UIListLayout = simpleElements.UIListLayout
@@ -6831,7 +6851,9 @@ return function(property)
 	local items = value({})
 	local multiselect = property.Multiselect or value(false)
 	local default = property.Default
-	local regex = property.Regex or value(function(itemToClean) return itemToClean end)
+	local regex = property.Regex or value(function(itemToClean)
+		return itemToClean
+	end)
 	local flag = flagCreator.register(get(property.FLAG) or dropdown.uid, {
 		items = value({}),
 		item = value(""),
@@ -6853,6 +6875,15 @@ return function(property)
 	local down = value(false)
 	local searched = value("")
 	local hover = value(false)
+	local hoverSound,toggleSound
+	connections.add(observe(hover):onChange(function()
+		if get(hover) then
+			if hoverSound then
+				hoverSound:Destroy()
+			end
+			hoverSound = sounds.play("hover")
+		end
+	end))
 
 	connections.add(observe(_selectedItems):onChange(function()
 		if #get(_selectedItems) == #get(items) then
@@ -6884,13 +6915,22 @@ return function(property)
 	-- Dropdown
 
 	local inst = new "Frame" {
+		Interactable = computed(function()
+			if not get(isEnabled) then
+				return false
+			end
+			if get(hideAll.boolean) or get(hideAll.all) then
+				return false
+			end
+			return true
+		end),
 		Parent = _parent,
 		ClipsDescendants = true,
 		Visible = visible,
 		Size = animate(function()
 			local _y = 0
 			if get(isDropped) and typeof(get(dropdownRef)) == "Instance" then
-				for i,v in get(dropdownRef):GetChildren() do
+				for _,v in get(dropdownRef):GetChildren() do
 					if v:IsA("Frame") or v:IsA("TextButton") or v:IsA("TextBox") or v:IsA("TextLabel") or v:IsA("ScrollingFrame") then
 						_y += v.AbsoluteSize.Y + 4
 					end
@@ -6967,7 +7007,7 @@ return function(property)
 
 						[children] = {
 							new "TextLabel" {
-								Size = UDim2.new(1,-26,1),
+								Size = UDim2.new(1,-26,1,0),
 								BackgroundTransparency = 1,
 								Text = computed(function()
 									if get(multiselect) then
@@ -7174,6 +7214,10 @@ return function(property)
 							table.remove(_items, table.find(_items, cleanedItem))
 						end
 						_selectedItems:set(_items)
+						if toggleSound then
+							toggleSound:Destroy()
+						end
+						toggleSound = sounds.play("select")
 					else
 						_selectedItem:set(cleanedItem)
 						isDropped:set(false)
@@ -7186,7 +7230,7 @@ return function(property)
 						BackgroundTransparency = 1,
 						Size = computed(function()
 							if get(itemImage) ~= "" then
-								return UDim2.new(1,-((get(componentY) - 10)) - 3,1)
+								return UDim2.new(1,-((get(componentY) - 10)) - 3,1,0)
 							end
 							return UDim2.fromScale(1,1)
 						end),
@@ -7264,9 +7308,8 @@ return function(property)
 			else
 				if default then
 					for _,v in get(items) do
-						if typeof(v) == "table" and v.Value == get(default) then
-							_selectedItem:set(get(default))
-						elseif v == get(default) then
+						local _item = typeof(v) == "table" and v.Value or v
+						if _item == get(default) then
 							_selectedItem:set(get(default))
 						end
 					end
@@ -7454,7 +7497,7 @@ return function(property)
 	-- Data
 
 	local hideAll = data.find("hideAll")
-    local group = data.add(property)
+    data.add(property)
 
 	-- Properties
 
@@ -7553,7 +7596,7 @@ return function(property)
 	local function addTab(_property)
 		-- Typecheck
 
-		local didPass, failedItems = typecheck(_property, {
+		didPass, failedItems = typecheck(_property, {
 			Name = "",
 			Image = ""
 		},{
@@ -7682,7 +7725,6 @@ return function(hover,imageDescription,description)
 	local utilities = require(chrono.utilities)
 	local get = utilities.get
 	local animate = utilities.animate
-	local typecheck = utilities.typecheck
 	local customFont = utilities.customFont
 	local references = utilities.references
 
@@ -7696,18 +7738,21 @@ return function(hover,imageDescription,description)
 
     local instanceName = get(data.find("instanceName").name)
     local mousePosition = data.find("mousePosition").vector2
+    local visible = data.find("visible").boolean
     local hideAll = data.find("hideAll")
 
     local screenGui = references.get(instanceName)
 
     new "Frame" {
+        Visible = visible,
         Parent = screenGui,
+        ZIndex = 3,
         Size = UDim2.fromOffset(0,20),
         Position = computed(function()
             return UDim2.fromOffset(get(mousePosition).X +12, get(mousePosition).Y)
         end),
         BackgroundTransparency = animate(function()
-            return get(hover) and 0.3 or 1
+            return 1 or get(hover) and 0.3 or 1
         end,40,1),
         BackgroundColor3 = theme.background,
         AutomaticSize = Enum.AutomaticSize.XY,
@@ -7723,7 +7768,7 @@ return function(hover,imageDescription,description)
                 end,40,1)
             },
             new "ImageLabel" {
-                Visible = get(imageDescription) ~= "" and true or false,
+                Visible = (get(imageDescription) ~= nil and get(imageDescription) ~= "") and true or false,
                 Size = UDim2.fromOffset(16,16),
                 BackgroundTransparency = 1,
                 Image = imageDescription,
@@ -7777,6 +7822,7 @@ return function(property)
 	local connections = utilities.connections
 	local customFont = utilities.customFont
 	local references = utilities.references
+	local sounds = utilities.sounds
 
 	local simpleElements = require(chrono.simpleElements)
 	local UIPadding = simpleElements.UIPadding
@@ -7849,6 +7895,15 @@ return function(property)
 
 	local down = value(false)
 	local hover = value(false)
+	local hoverSound,toggleSound
+	connections.add(observe(hover):onChange(function()
+		if get(hover) then
+			if hoverSound then
+				hoverSound:Destroy()
+			end
+			hoverSound = sounds.play("hover")
+		end
+	end))
 	local keyCode = value()
 	local function checkKeyCode(_keycode: EnumItem, dupeMessage:string)
 		local _currentBinds = get(currentBinds.binds)
@@ -7984,7 +8039,7 @@ return function(property)
 						}
 					},
 					new "TextLabel" {
-						Size = UDim2.new(1,-26,1),
+						Size = UDim2.new(1,-26,1,0),
 						BackgroundTransparency = 1,
 						Text = computed(function()
 							return `{get(name)}{get(keycode) ~= nil and ` <font size="12"><i>{get(keycode)}</i></font>` or ""}`
@@ -8148,7 +8203,7 @@ return function(property)
 		name:set(newText)
 	end
 	function returnFunctions:SetBind(newBind:EnumItem)
-		local _didPass, _failedItems = typecheck({['SetBind'] = newBind}, {SetBind = Enum.keyCode.C})
+		local _didPass, _failedItems = typecheck({['SetBind'] = newBind}, {SetBind = Enum.KeyCode.C})
 		assert(_didPass, table.concat(_failedItems, "\n"))
 
 		checkKeyCode(newBind, "At :SetBind")
@@ -8176,21 +8231,17 @@ end
 end)() end,
     [73] = function()local wax,script,require=ImportGlobals(73)local ImportGlobals return (function(...)local chrono = script.Parent.Parent
 
-return function(property)
+return function()
     local bundles = require(chrono.Bundles)
     local data = bundles.data
     local theme = bundles.themeSystem
-    local icons = bundles.icons
     local fusion = bundles.Fusion
         local new = fusion.New
-        local children = fusion.Children
         local value = fusion.Value
         local computed = fusion.Computed
         local observe = fusion.Observer
-		local onevent = fusion.OnEvent
 
 	local simpleElements = require(chrono.simpleElements)
-	local UIPadding = simpleElements.UIPadding
 	local UIListLayout = simpleElements.UIListLayout
 	local SO = Enum.SortOrder
 	local FD = Enum.FillDirection
@@ -8199,7 +8250,6 @@ return function(property)
 
     local utilities = require(chrono.utilities)
     local get = utilities.get
-    local animate = utilities.animate
     local customFont = utilities.customFont
 	local connections = utilities.connections
 
@@ -8207,29 +8257,21 @@ return function(property)
 
     local currentBinds = data.find("currentBinds")
 	local bindData = data.find("bindData")
-	local hideAll = data.find("hideAll")
-	local componentY = data.find("componentY").number
-	local keybindList = data.add(property)
-
-	-- Properties
-
-	local _parent = property.Parent
-	local title = value("Active Keybinds")
 
 	-- Variables
 
 	local name = value("Active Keybinds")
-	local setChildren, module, visible
+	local setChildren, _, visible
 
 	-- keybindList
 
-	module, setChildren, visible = require(script.Parent.module)({
+	_, setChildren, visible = require(script.Parent.module)({
 		Name = name,
 		Destroys = false,
 		Children = {}
 	})
 
-	local function updateModule(tbl)
+	local function updateModule()
 		local newChildren = {
 			UIListLayout(SO.LayoutOrder,FD.Vertical,HA.Center,VA.Top,UDim.new(0,5))
 		}
@@ -8254,10 +8296,8 @@ return function(property)
 		setChildren(newChildren)
 	end
 
-	connections.add(observe(currentBinds.binds):onChange(function()
-		updateModule(get(currentBinds.binds))
-	end))
-	updateModule(get(currentBinds.binds))
+	connections.add(observe(currentBinds.binds):onChange(updateModule))
+	updateModule()
 
 	local returnTable = {}
 	function returnTable:Visible()
@@ -8388,24 +8428,16 @@ end)() end,
 return function(property)
 	local Bundles = require(chrono.Bundles)
 	local data = Bundles.data
-	local theme = Bundles.themeSystem
 	local Fusion = Bundles.Fusion
-		local new = Fusion.New
-		local children = Fusion.Children
 		local value = Fusion.Value
-		local onevent = Fusion.OnEvent
-		local computed = Fusion.Computed
 
 	local utilities = require(chrono.utilities)
 	local get = utilities.get
-	local animate = utilities.animate
 	local typecheck = utilities.typecheck
-	local customFont = utilities.customFont
-	local references = utilities.references
+	local randomString = utilities.randomString
 
 	local simpleElements = require(chrono.simpleElements)
 	local UIListLayout = simpleElements.UIListLayout
-	local UIPadding = simpleElements.UIPadding
 	local SO = Enum.SortOrder
 	local FD = Enum.FillDirection
 	local HA = Enum.HorizontalAlignment
@@ -8415,37 +8447,34 @@ return function(property)
 
     local didPass, failedItems = typecheck(property,{
 		Name = "",
-		CanClose = true
-	},{property.CanClose and "" or "CanClose"})
+		Destroyable = true
+	},{property.Destroyable and "" or "Destroyable"})
 	assert(didPass, table.concat(failedItems, "\n"))
 
     -- Data
 
-	local list = data.add(property)
+	data.add(property)
 
     -- Properties
 
 	local name = property.Name
-
-	print(get(property.CanClose))
+	local destroyable = property.Destroyable or value(false)
 
     -- Variables
 
-    local _children = value({
-        UIListLayout(SO.LayoutOrder,FD.Vertical,HA.Center,VA.Top,UDim.new(0,4))
-    })
-    local listModule, setChildren, visible = module({
+    local listModule, _, visible = module({
         Name = name,
-		Destroys = false,
-		CanClose = get(property.CanClose),
-        Children = _children
+		Destroys = destroyable,
+        Children = {
+			UIListLayout(SO.LayoutOrder,FD.Vertical,HA.Center,VA.Top,UDim.new(0,4))
+		}
     })
 
-    return listModule.Frame,visible,name
+    return listModule.Frame.Children,visible,name
 end
 end)() end,
     [76] = function()local wax,script,require=ImportGlobals(76)local ImportGlobals return (function(...)local chrono = script.Parent.Parent
-return function(property)
+return function()
 	local Bundles = require(chrono.Bundles)
 	local data = Bundles.data
 	local theme = Bundles.themeSystem
@@ -8461,7 +8490,6 @@ return function(property)
 	local typecheck = utilities.typecheck
 	local customFont = utilities.customFont
     local connections = utilities.connections
-    local formatTime = utilities.formatTime
 
 	local simpleElements = require(chrono.simpleElements)
 	local UIListLayout = simpleElements.UIListLayout
@@ -8473,7 +8501,6 @@ return function(property)
 
     -- Data
 
-    local launchTime = data.find("launchTime")
     local logFunction = data.find("logFunction")
 
     local logs = value({})
@@ -8607,11 +8634,11 @@ return function(property)
 	local utilities = require(chrono.utilities)
 	local get = utilities.get
 	local animate = utilities.animate
-	local typecheck = utilities.typecheck
 	local customFont = utilities.customFont
     local drag = utilities.drag
     local references = utilities.references
     local connections = utilities.connections
+    local randomString = utilities.randomString
 
 	local simpleElements = require(chrono.simpleElements)
 	local UIListLayout = simpleElements.UIListLayout
@@ -8622,46 +8649,48 @@ return function(property)
 	local HA = Enum.HorizontalAlignment
 	local VA = Enum.VerticalAlignment
 
-	-- Typecheck
-
-	local didPass, failedItems = typecheck(property,{
-		Name = {},
-        Destroys = true,
-        CanClose = false,
-        Children = {}
-	},{
-        property.Destroys and "" or "Destroys",
-        property.CanClose and "" or "CanClose"
-    })
-	assert(didPass, table.concat(failedItems, "\n"))
-
     -- Data
 
     local instanceName = data.find("instanceName")
     local offset = data.find("offset")
+    local moduleStack = data.find("moduleStack")
+
+    if #moduleStack.list == 0 then
+        for i=1,20 do
+            moduleStack.list[i] = false
+        end
+    end
 
     -- Properties
 
     local name = property.Name
     local _children = value(property.Children)
-    local destroys = property.Destroys or value(true)
-
-    local canClose = property.CanClose
+    local destroys = property.Destroys
 
     -- Variables
 
     local screenGui = references.get(get(instanceName.name))
-    local close = value(false)
+    local hover = value(false)
     local visible = value(true)
+    local maximized = value(true)
 
     -- Module
+
+    local slot
+    for i,_ in moduleStack.list do
+        if moduleStack.list[i] == false then
+            moduleStack.list[i] = true
+            slot = i
+            break
+        end
+    end
 
     local module
     module = new "TextButton" {
         Visible = visible,
         Parent = screenGui,
         Size = UDim2.fromOffset(200,0),
-        Position = UDim2.fromOffset(10,10 + get(offset.number)),
+        Position = UDim2.fromOffset(10 + ((slot -1) * 210),10 + get(offset.number)),
         BackgroundTransparency = 1,
         AutomaticSize = Enum.AutomaticSize.Y,
 
@@ -8697,36 +8726,38 @@ return function(property)
                                 RichText = true
                             },
                             new "ImageButton" {
-                                Interactable = canClose,
                                 AnchorPoint = Vector2.new(1,0),
                                 Position = UDim2.fromScale(1,0),
                                 Size = UDim2.fromOffset(24,24),
                                 BackgroundTransparency = 1,
-                                Image = icons.close,
+                                Image = get(destroys) and icons.close or icons.dash,
                                 ImageColor3 = theme.image,
                                 ImageTransparency = animate(function()
-                                    return not canClose and 1 or get(close) and 0.2 or 0.4
+                                    return get(hover) and 0.2 or 0.4
                                 end,30,1),
 
                                 [onevent "MouseEnter"] = function()
-                                    close:set(true)
+                                    hover:set(true)
                                 end,
 
                                 [onevent "MouseLeave"] = function()
-                                    close:set(false)
+                                    hover:set(false)
                                 end,
 
                                 [onevent "Activated"] = function()
                                     if get(destroys) then
+                                        moduleStack.list[slot] = false
                                         module:Destroy()
                                     else
-                                        visible:set(false)
+                                        maximized:set(not get(maximized))
                                     end
                                 end,
                             },
                         }
                     },
                     new "Frame" {
+                        Visible = maximized,
+                        Name = "Children",
                         Size = UDim2.new(1,0,0,0),
                         Position = UDim2.fromOffset(0,26),
                         BackgroundTransparency = 1,
@@ -8740,7 +8771,16 @@ return function(property)
 
     }
 
-    local connection, onEnd = drag(module, 15)
+    local count,_connection = 0,nil
+	_connection = module:GetPropertyChangedSignal("AbsolutePosition"):Connect(function()
+		count += 1
+		if count > 2 then
+            moduleStack.list[slot] = false
+			_connection:Disconnect()
+		end
+	end)
+
+    local connection = drag(module, 15)
     connections.add(connection)
     module.Destroying:Once(function()
         connection:Disconnect()
@@ -8764,7 +8804,6 @@ return function(property)
     local utilities = require(chrono.utilities)
     local get = utilities.get
     local animate = utilities.animate
-    local getStringBounds = utilities.getStringBounds
     local customFont = utilities.customFont
     local typecheck = utilities.typecheck
     local connections = utilities.connections
@@ -8820,7 +8859,7 @@ return function(property)
         local tstringed = string.split(stringed, ".")
         if #tstringed == 1 then
             local zeros = ""
-            for i=1,decimal do
+            for _=1,decimal do
                 zeros = zeros.."0"
             end
             stringed = stringed.."."..zeros
@@ -9032,7 +9071,9 @@ return function(property)
         resized:set(true)
     end)
     task.spawn(function()
-        repeat task.wait() until get(resized)
+        repeat
+            task.wait()
+        until get(resized)
         local startTick = tick()
         local endTick
         repeat
@@ -9043,7 +9084,9 @@ return function(property)
     end)
     task.spawn(function()
         loaded:set(true)
-        repeat task.wait() until get(resized)
+        repeat
+            task.wait()
+        until get(resized)
         task.wait(get(duration))
         task.wait(0.2)
         resized:set(false)
@@ -9052,6 +9095,18 @@ return function(property)
         cleanup()
         newNotification:Destroy()
     end)
+    local returnTable = {}
+    function returnTable:Destroy()
+        task.spawn(function()
+            resized:set(false)
+            task.wait(0.4)
+            loaded:set(false)
+            newNotification:Destroy()
+            cleanup()
+            table.clear(returnTable)
+        end)
+    end
+    return returnTable
 end
 end)() end,
     [79] = function()local wax,script,require=ImportGlobals(79)local ImportGlobals return (function(...)local chrono = script.Parent.Parent
@@ -9061,6 +9116,7 @@ return function(quantity, parent)
 	local fusion = bundles.Fusion
 	local value = fusion.Value
 	local new = fusion.New
+    local computed = fusion.Computed
 
     local LPH_NO_VIRTUALIZE = LPH_NO_VIRTUALIZE or function(v)
         return v
@@ -9075,11 +9131,7 @@ return function(quantity, parent)
     local currentCircles = 0
 
     local randomColor = {
-        theme.orb1,
-        theme.orb2,
-        theme.orb3,
-        theme.orb4,
-        theme.orb5
+        "orb1","orb2","orb3","orb4","orb5"
     }
 
     local instances = {}
@@ -9092,10 +9144,12 @@ return function(quantity, parent)
                 local endingPos = UDim2.fromScale(math.random(0,100)/100,math.random(0,100)/100)
                 local waitingPeriod = math.random(0,20)/10
                 local _randomSize = math.random(32,256)
+                local _color = theme.raw[randomColor[math.random(1, #randomColor)]]
                 if not instances[i] then
                     local position = value(startingPos)
                     local randomSize = value(UDim2.fromOffset(_randomSize, _randomSize))
                     local start = value(false)
+                    local color = value(_color)
                     instances[i] = {
                         inst = new "ImageLabel" {
                             ZIndex = 0,
@@ -9110,20 +9164,24 @@ return function(quantity, parent)
                             end,2,1.3),
                             BackgroundTransparency = 1,
                             Image = "rbxassetid://88314233994030",
-                            ImageColor3 = randomColor[math.random(1, #randomColor)],
+                            ImageColor3 = animate(function()
+                                return get(color)
+                            end,2,1),
                             ImageTransparency = animate(function()
                                 return get(start) and 0 or 1
                             end,2,1)
                         },
                         position = position,
                         randomSize = randomSize,
-                        start = start
+                        start = start,
+                        color = color
                     }
                 end
                 local position = instances[i].position
                 local randomSize = instances[i].randomSize
                 local start = instances[i].start
                 local circle = instances[i].inst
+                local color = instances[i].color
                 if maximumCircle == currentCircles then
                     task.wait()
                     continue
@@ -9139,6 +9197,7 @@ return function(quantity, parent)
                         position:set(endingPos)
                         _randomSize = math.random(32,256)
                         randomSize:set(UDim2.fromOffset(_randomSize, _randomSize))
+                        color:set(_color)
                     end)
                     task.delay(math.random(35,39)/10 + math.random(0,30)/20, function()
                         start:set(false)
@@ -9154,7 +9213,7 @@ return function(quantity, parent)
     coroutine.resume(thread)
 
     return function()
-        for i,v in instances do
+        for _,v in instances do
             v.inst:Destroy()
         end
         coroutine.close(thread)
@@ -9341,7 +9400,7 @@ return function(property)
 	local typecheck = utilities.typecheck
 	local customFont = utilities.customFont
 	local connections = utilities.connections
-	local references = utilities.references
+	local sounds = utilities.sounds
 
 	local simpleElements = require(chrono.simpleElements)
 	local UIListLayout = simpleElements.UIListLayout
@@ -9449,6 +9508,15 @@ return function(property)
 		end
 	end))
 	local hover = value(false)
+	local hoverSound,toggleSound
+	connections.add(observe(hover):onChange(function()
+		if get(hover) then
+			if hoverSound then
+				hoverSound:Destroy()
+			end
+			hoverSound = sounds.play("hover")
+		end
+	end))
 
 	-- Slider
 
@@ -9993,7 +10061,7 @@ return function(property)
 	local customFont = utilities.customFont
 	local typecheck = utilities.typecheck
 	local connections = utilities.connections
-	local references = utilities.references
+	local sounds = utilities.sounds
 
 	local simpleElements = require(chrono.simpleElements)
 	local UIPadding = simpleElements.UIPadding
@@ -10066,6 +10134,15 @@ return function(property)
 	local lastCorrectText = value(get(correctText))
 	local lastCalled = value("")
 	local hover = value(false)
+	local hoverSound,toggleSound
+	connections.add(observe(hover):onChange(function()
+		if get(hover) then
+			if hoverSound then
+				hoverSound:Destroy()
+			end
+			hoverSound = sounds.play("hover")
+		end
+	end))
 
 	connections.add(observe(correctText):onChange(function()
 		if get(onlyNumbers) then
@@ -10379,7 +10456,7 @@ return function(property)
 	local connections = utilities.connections
 	local customFont = utilities.customFont
 	local references = utilities.references
-
+	local sounds = utilities.sounds
 
 	local simpleElements = require(chrono.simpleElements)
 	local UIPadding = simpleElements.UIPadding
@@ -10457,9 +10534,9 @@ return function(property)
 	local boolean = flag.status.boolean
 	local keybind = flag.status.keybind
 
-	observe(boolean):onChange(function()
+	connections.add(observe(boolean):onChange(function()
 		task.spawn(get(callback), get(boolean))
-	end)
+	end))
 
 	-- Variables
 
@@ -10504,6 +10581,15 @@ return function(property)
 		keybind:set(get(keyCode) ~= nil and get(keyCode).Name or nil)
 	end))
 	local hover = value(false)
+	local hoverSound,toggleSound
+	connections.add(observe(hover):onChange(function()
+		if get(hover) then
+			if hoverSound then
+				hoverSound:Destroy()
+			end
+			hoverSound = sounds.play("hover")
+		end
+	end))
 
 	-- Toggle
 
@@ -10539,6 +10625,10 @@ return function(property)
 
 		[onevent "Activated"] = function()
 			boolean:set(not get(boolean))
+			if toggleSound then
+				toggleSound:Destroy()
+			end
+			toggleSound = sounds.play("select")
 		end,
 
 		[children] = {
@@ -10613,7 +10703,7 @@ return function(property)
 						}
 					},
 					new "TextLabel" {
-						Size = UDim2.new(1,get(linkKeybind) and -52 or -26,1),
+						Size = UDim2.new(1,get(linkKeybind) and -52 or -26,1,0),
 						BackgroundTransparency = 1,
 						Text = computed(function()
 							return `{get(name)}{get(keybind) ~= nil and ` <font size="12"><i>{get(keybind)}</i></font>` or ""}`
@@ -10894,6 +10984,7 @@ return function(property, bindableEvent)
 	local services = bundles.services
 	local UserInputService = services.UserInputService
 	local RunService = services.RunService
+	local Players = services.Players
 	local theme = bundles.themeSystem
 	local icons = bundles.icons
 	local Fusion = bundles.Fusion
@@ -10946,6 +11037,8 @@ return function(property, bindableEvent)
 	local selectedTab = data.find("selectedTab")
 	local hideAll = data.find("hideAll")
 	local visible = data.find("visible")
+	local viewportThings = data.find("viewportThings")
+	local viewportVisible = data.find("viewportVisible").boolean
 
 	-- Properties
 
@@ -10976,6 +11069,10 @@ return function(property, bindableEvent)
 	local cachedTab = ""
 
 	-- Instance
+
+	local camera = new "Camera" {}
+	local viewport = value()
+
 
 	new "ScreenGui" {
 		Name = get(instanceName.name),
@@ -11370,7 +11467,7 @@ return function(property, bindableEvent)
 						[ref] = resizer,
 
 						[onevent "InputBegan"] = function(input)
-							if (input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch) then
+							if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
 								local _resizer = get(resizer)
 								local oldDistance = Vector2.new(9e9,9e9)
 								local oldAbsolutePosition = _resizer.AbsolutePosition
@@ -11413,6 +11510,63 @@ return function(property, bindableEvent)
 						[children] = {
 							UICorner(6)
 						}
+					},
+					new "Frame" {
+						Visible = viewportVisible,
+						Size = UDim2.fromOffset(200,400),
+						Position = UDim2.new(1,10,0,0),
+						BackgroundColor3 = theme.background,
+
+						[children] = {
+							UICorner(6),
+							new "UIStroke" {
+								Color = theme.get("border"),
+								Thickness = 1.5,
+								Transparency = 0.65
+							},
+							new "CanvasGroup" { -- Orb Container
+								ClipsDescendants = true,
+								BackgroundTransparency = 1,
+								Size = UDim2.fromScale(1,1),
+
+								[children] = {
+									UICorner(6)
+								}
+							},
+							new "Frame" {
+								Size = UDim2.fromScale(1,1),
+								BackgroundTransparency = 1,
+
+								[children] = {
+									UIPadding(4),
+									UIListLayout(SO.LayoutOrder,FD.Vertical,HA.Center,VA.Center),
+									new "TextLabel" {
+										FontFace = customFont("Inter", Enum.FontWeight.Bold),
+										Text = "ESP Preview",
+										TextColor3 = theme.text,
+										TextScaled = true,
+										TextXAlignment = Enum.TextXAlignment.Left,
+										BackgroundTransparency = 1,
+										Size = UDim2.new(1,0,0,20),
+										TextTransparency = animate(function()
+											return get(hideAll.boolean) and get(hideAll.all) and 1 or 0
+										end,40,1),
+
+										[children] = {
+											UIPadding(0)
+										}
+									},
+									new "ViewportFrame" {
+										Name = "viewport",
+										Size = UDim2.new(1,0,1,-20),
+										CurrentCamera = camera,
+										BackgroundTransparency = 1,
+
+										[ref] = viewport
+									}
+								}
+							}
+						}
 					}
 				}
 			},
@@ -11433,6 +11587,24 @@ return function(property, bindableEvent)
 		}
 
 	}
+	if Players.LocalPlayer then
+		viewportThings.Viewport = get(viewport)
+		camera.Parent = get(viewport)
+		local localPlayer = Players.LocalPlayer
+		local oldArc = localPlayer.Character.Archivable
+		localPlayer.Character.Archivable = true
+		local clone = localPlayer.Character:Clone()
+		localPlayer.Character.Archivable = oldArc
+		local worldModel = new "WorldModel" {Parent = get(viewport)}
+		viewportThings.Character = clone
+		clone.Parent = worldModel
+		clone.HumanoidRootPart.CFrame = (CFrame.new(Vector3.new(0,0,-9.5), Vector3.new(0,0,0)))
+		clone.HumanoidRootPart.Anchored = true
+		camera.CameraSubject = clone
+		camera.CFrame = CFrame.lookAt(Vector3.new(0,3,0), clone.HumanoidRootPart.Position)
+	end
+
+
 	get(uipagelayout2):JumpTo(get(publicFrameList))
 
 	local LPH_NO_VIRTUALIZE = LPH_NO_VIRTUALIZE or function(v)
@@ -11459,6 +11631,7 @@ return function(property, bindableEvent)
 
 	drag(get(container), 15)
 	connections.add(orbs(25, get(container).CanvasGroup))
+	connections.add(orbs(10, get(viewport).Parent.Parent.CanvasGroup))
 end
 end)() end,
     [88] = function()local wax,script,require=ImportGlobals(88)local ImportGlobals return (function(...)return setmetatable({},{
@@ -11947,14 +12120,50 @@ end
 
 return returnFunctions
 end)() end,
-    [105] = function()local wax,script,require=ImportGlobals(105)local ImportGlobals return (function(...)local Fusion = require(script.Parent.Parent.Bundles.Fusion)
+    [105] = function()local wax,script,require=ImportGlobals(105)local ImportGlobals return (function(...)local bundles = require(script.Parent.Parent.Bundles)
+local fusion = bundles.Fusion
+local services = bundles.services
+local SoundService = services.SoundService
+local data = bundles.data
+local utilities = require(script.Parent)
+local references = utilities.references
+local get = utilities.get
+
+local instanceName = get(data.find("instanceName").name)
+local sounds = {}
+type Sounds = {
+	addSound: (name:string, asset:string) -> (),
+    Studio: boolean,
+	play: (name:string) -> ()
+}
+local functions: Sounds = {}
+functions.Studio = false
+function functions.addSound(name:string,asset:string)
+    if not sounds[name] then
+        sounds[name] = asset
+    else
+        error(`Duplicate name: {name}`)
+    end
+end
+function functions.play(name:string)
+    local inst: Sound = fusion.New "Sound" {Parent = references.get(instanceName)}
+    inst.SoundId = sounds[name]
+    inst.Ended:Once(function()
+        inst:Destroy()
+    end)
+    inst:Play()
+    return inst
+end
+return functions
+end)() end,
+    [106] = function()local wax,script,require=ImportGlobals(106)local ImportGlobals return (function(...)local Fusion = require(script.Parent.Parent.Bundles.Fusion)
 local computed = Fusion.Computed
 
 return function(callback,style)
 	return Fusion.Tween(computed(callback), style)
 end
 end)() end,
-    [106] = function()local wax,script,require=ImportGlobals(106)local ImportGlobals return (function(...)return function(variables:table, correctVariables:table, ignoreList:table?):any
+    [107] = function()local wax,script,require=ImportGlobals(107)local ImportGlobals return (function(...)return function(variables:table, correctVariables:table, ignoreList:table?):any
     ignoreList = ignoreList or {}
     local didPass = true
     local itemsThatFailed = {}
@@ -11979,6 +12188,169 @@ local ObjectTree = {
         },
         {
             {
+                63,
+                1,
+                {
+                    "components"
+                },
+                {
+                    {
+                        71,
+                        2,
+                        {
+                            "hover"
+                        }
+                    },
+                    {
+                        83,
+                        2,
+                        {
+                            "textbox"
+                        }
+                    },
+                    {
+                        79,
+                        2,
+                        {
+                            "orbs"
+                        }
+                    },
+                    {
+                        76,
+                        2,
+                        {
+                            "logPage"
+                        }
+                    },
+                    {
+                        68,
+                        2,
+                        {
+                            "divider"
+                        }
+                    },
+                    {
+                        85,
+                        2,
+                        {
+                            "warn"
+                        }
+                    },
+                    {
+                        82,
+                        2,
+                        {
+                            "tab"
+                        }
+                    },
+                    {
+                        72,
+                        2,
+                        {
+                            "keybind"
+                        }
+                    },
+                    {
+                        66,
+                        2,
+                        {
+                            "buttongroup"
+                        }
+                    },
+                    {
+                        74,
+                        2,
+                        {
+                            "label"
+                        }
+                    },
+                    {
+                        81,
+                        2,
+                        {
+                            "slider"
+                        }
+                    },
+                    {
+                        80,
+                        2,
+                        {
+                            "paragraph"
+                        }
+                    },
+                    {
+                        73,
+                        2,
+                        {
+                            "keybindList"
+                        }
+                    },
+                    {
+                        78,
+                        2,
+                        {
+                            "notification"
+                        }
+                    },
+                    {
+                        77,
+                        2,
+                        {
+                            "module"
+                        }
+                    },
+                    {
+                        64,
+                        2,
+                        {
+                            "announcement"
+                        }
+                    },
+                    {
+                        70,
+                        2,
+                        {
+                            "group"
+                        }
+                    },
+                    {
+                        65,
+                        2,
+                        {
+                            "button"
+                        }
+                    },
+                    {
+                        84,
+                        2,
+                        {
+                            "toggle"
+                        }
+                    },
+                    {
+                        67,
+                        2,
+                        {
+                            "colorpicker"
+                        }
+                    },
+                    {
+                        69,
+                        2,
+                        {
+                            "dropdown"
+                        }
+                    },
+                    {
+                        75,
+                        2,
+                        {
+                            "list"
+                        }
+                    }
+                }
+            },
+            {
                 2,
                 2,
                 {
@@ -11986,17 +12358,33 @@ local ObjectTree = {
                 },
                 {
                     {
-                        59,
+                        61,
                         2,
                         {
-                            "icons"
+                            "themeSystem"
+                        },
+                        {
+                            {
+                                62,
+                                2,
+                                {
+                                    "default"
+                                }
+                            }
                         }
                     },
                     {
-                        58,
+                        60,
                         2,
                         {
-                            "flags"
+                            "services"
+                        }
+                    },
+                    {
+                        57,
+                        2,
+                        {
+                            "data"
                         }
                     },
                     {
@@ -12007,156 +12395,10 @@ local ObjectTree = {
                         },
                         {
                             {
-                                16,
-                                1,
-                                {
-                                    "Dependencies"
-                                },
-                                {
-                                    {
-                                        21,
-                                        2,
-                                        {
-                                            "useDependency"
-                                        }
-                                    },
-                                    {
-                                        19,
-                                        2,
-                                        {
-                                            "sharedState"
-                                        }
-                                    },
-                                    {
-                                        18,
-                                        2,
-                                        {
-                                            "initDependency"
-                                        }
-                                    },
-                                    {
-                                        20,
-                                        2,
-                                        {
-                                            "updateAll"
-                                        }
-                                    },
-                                    {
-                                        17,
-                                        2,
-                                        {
-                                            "captureDependencies"
-                                        }
-                                    }
-                                }
-                            },
-                            {
                                 39,
                                 2,
                                 {
                                     "PubTypes"
-                                }
-                            },
-                            {
-                                49,
-                                1,
-                                {
-                                    "Utility"
-                                },
-                                {
-                                    {
-                                        55,
-                                        2,
-                                        {
-                                            "restrictRead"
-                                        }
-                                    },
-                                    {
-                                        50,
-                                        2,
-                                        {
-                                            "None"
-                                        }
-                                    },
-                                    {
-                                        54,
-                                        2,
-                                        {
-                                            "needsDestruction"
-                                        }
-                                    },
-                                    {
-                                        52,
-                                        2,
-                                        {
-                                            "doNothing"
-                                        }
-                                    },
-                                    {
-                                        56,
-                                        2,
-                                        {
-                                            "xtypeof"
-                                        }
-                                    },
-                                    {
-                                        51,
-                                        2,
-                                        {
-                                            "cleanup"
-                                        }
-                                    },
-                                    {
-                                        53,
-                                        2,
-                                        {
-                                            "isSimilar"
-                                        }
-                                    }
-                                }
-                            },
-                            {
-                                33,
-                                1,
-                                {
-                                    "Logging"
-                                },
-                                {
-                                    {
-                                        35,
-                                        2,
-                                        {
-                                            "logErrorNonFatal"
-                                        }
-                                    },
-                                    {
-                                        36,
-                                        2,
-                                        {
-                                            "logWarn"
-                                        }
-                                    },
-                                    {
-                                        37,
-                                        2,
-                                        {
-                                            "messages"
-                                        }
-                                    },
-                                    {
-                                        38,
-                                        2,
-                                        {
-                                            "parseError"
-                                        }
-                                    },
-                                    {
-                                        34,
-                                        2,
-                                        {
-                                            "logError"
-                                        }
-                                    }
                                 }
                             },
                             {
@@ -12176,13 +12418,6 @@ local ObjectTree = {
                                 }
                             },
                             {
-                                48,
-                                2,
-                                {
-                                    "Types"
-                                }
-                            },
-                            {
                                 4,
                                 1,
                                 {
@@ -12197,10 +12432,24 @@ local ObjectTree = {
                                         }
                                     },
                                     {
-                                        11,
+                                        13,
                                         2,
                                         {
-                                            "packType"
+                                            "unpackType"
+                                        }
+                                    },
+                                    {
+                                        7,
+                                        2,
+                                        {
+                                            "Tween"
+                                        }
+                                    },
+                                    {
+                                        6,
+                                        2,
+                                        {
+                                            "SpringScheduler"
                                         }
                                     },
                                     {
@@ -12225,91 +12474,114 @@ local ObjectTree = {
                                         }
                                     },
                                     {
-                                        7,
-                                        2,
-                                        {
-                                            "Tween"
-                                        }
-                                    },
-                                    {
-                                        6,
-                                        2,
-                                        {
-                                            "SpringScheduler"
-                                        }
-                                    },
-                                    {
-                                        13,
-                                        2,
-                                        {
-                                            "unpackType"
-                                        }
-                                    },
-                                    {
                                         10,
                                         2,
                                         {
                                             "lerpType"
                                         }
+                                    },
+                                    {
+                                        11,
+                                        2,
+                                        {
+                                            "packType"
+                                        }
                                     }
                                 }
                             },
                             {
-                                40,
+                                16,
                                 1,
                                 {
-                                    "State"
+                                    "Dependencies"
                                 },
                                 {
                                     {
-                                        47,
+                                        18,
                                         2,
                                         {
-                                            "unwrap"
+                                            "initDependency"
                                         }
                                     },
                                     {
-                                        41,
+                                        21,
                                         2,
                                         {
-                                            "Computed"
+                                            "useDependency"
                                         }
                                     },
                                     {
-                                        44,
+                                        20,
                                         2,
                                         {
-                                            "ForValues"
+                                            "updateAll"
                                         }
                                     },
                                     {
-                                        46,
+                                        17,
                                         2,
                                         {
-                                            "Value"
+                                            "captureDependencies"
                                         }
                                     },
                                     {
-                                        45,
+                                        19,
                                         2,
                                         {
-                                            "Observer"
-                                        }
-                                    },
-                                    {
-                                        43,
-                                        2,
-                                        {
-                                            "ForPairs"
-                                        }
-                                    },
-                                    {
-                                        42,
-                                        2,
-                                        {
-                                            "ForKeys"
+                                            "sharedState"
                                         }
                                     }
+                                }
+                            },
+                            {
+                                33,
+                                1,
+                                {
+                                    "Logging"
+                                },
+                                {
+                                    {
+                                        37,
+                                        2,
+                                        {
+                                            "messages"
+                                        }
+                                    },
+                                    {
+                                        36,
+                                        2,
+                                        {
+                                            "logWarn"
+                                        }
+                                    },
+                                    {
+                                        38,
+                                        2,
+                                        {
+                                            "parseError"
+                                        }
+                                    },
+                                    {
+                                        35,
+                                        2,
+                                        {
+                                            "logErrorNonFatal"
+                                        }
+                                    },
+                                    {
+                                        34,
+                                        2,
+                                        {
+                                            "logError"
+                                        }
+                                    }
+                                }
+                            },
+                            {
+                                48,
+                                2,
+                                {
+                                    "Types"
                                 }
                             },
                             {
@@ -12320,10 +12592,17 @@ local ObjectTree = {
                                 },
                                 {
                                     {
-                                        32,
+                                        29,
                                         2,
                                         {
-                                            "defaultProps"
+                                            "Out"
+                                        }
+                                    },
+                                    {
+                                        30,
+                                        2,
+                                        {
+                                            "Ref"
                                         }
                                     },
                                     {
@@ -12341,31 +12620,17 @@ local ObjectTree = {
                                         }
                                     },
                                     {
-                                        30,
+                                        26,
                                         2,
                                         {
-                                            "Ref"
+                                            "New"
                                         }
                                     },
                                     {
-                                        24,
+                                        32,
                                         2,
                                         {
-                                            "Cleanup"
-                                        }
-                                    },
-                                    {
-                                        23,
-                                        2,
-                                        {
-                                            "Children"
-                                        }
-                                    },
-                                    {
-                                        29,
-                                        2,
-                                        {
-                                            "Out"
+                                            "defaultProps"
                                         }
                                     },
                                     {
@@ -12376,17 +12641,140 @@ local ObjectTree = {
                                         }
                                     },
                                     {
-                                        26,
-                                        2,
-                                        {
-                                            "New"
-                                        }
-                                    },
-                                    {
                                         27,
                                         2,
                                         {
                                             "OnChange"
+                                        }
+                                    },
+                                    {
+                                        23,
+                                        2,
+                                        {
+                                            "Children"
+                                        }
+                                    },
+                                    {
+                                        24,
+                                        2,
+                                        {
+                                            "Cleanup"
+                                        }
+                                    }
+                                }
+                            },
+                            {
+                                40,
+                                1,
+                                {
+                                    "State"
+                                },
+                                {
+                                    {
+                                        44,
+                                        2,
+                                        {
+                                            "ForValues"
+                                        }
+                                    },
+                                    {
+                                        47,
+                                        2,
+                                        {
+                                            "unwrap"
+                                        }
+                                    },
+                                    {
+                                        46,
+                                        2,
+                                        {
+                                            "Value"
+                                        }
+                                    },
+                                    {
+                                        42,
+                                        2,
+                                        {
+                                            "ForKeys"
+                                        }
+                                    },
+                                    {
+                                        43,
+                                        2,
+                                        {
+                                            "ForPairs"
+                                        }
+                                    },
+                                    {
+                                        45,
+                                        2,
+                                        {
+                                            "Observer"
+                                        }
+                                    },
+                                    {
+                                        41,
+                                        2,
+                                        {
+                                            "Computed"
+                                        }
+                                    }
+                                }
+                            },
+                            {
+                                49,
+                                1,
+                                {
+                                    "Utility"
+                                },
+                                {
+                                    {
+                                        56,
+                                        2,
+                                        {
+                                            "xtypeof"
+                                        }
+                                    },
+                                    {
+                                        53,
+                                        2,
+                                        {
+                                            "isSimilar"
+                                        }
+                                    },
+                                    {
+                                        54,
+                                        2,
+                                        {
+                                            "needsDestruction"
+                                        }
+                                    },
+                                    {
+                                        50,
+                                        2,
+                                        {
+                                            "None"
+                                        }
+                                    },
+                                    {
+                                        55,
+                                        2,
+                                        {
+                                            "restrictRead"
+                                        }
+                                    },
+                                    {
+                                        52,
+                                        2,
+                                        {
+                                            "doNothing"
+                                        }
+                                    },
+                                    {
+                                        51,
+                                        2,
+                                        {
+                                            "cleanup"
                                         }
                                     }
                                 }
@@ -12394,33 +12782,17 @@ local ObjectTree = {
                         }
                     },
                     {
-                        60,
+                        59,
                         2,
                         {
-                            "services"
+                            "icons"
                         }
                     },
                     {
-                        61,
+                        58,
                         2,
                         {
-                            "themeSystem"
-                        },
-                        {
-                            {
-                                62,
-                                2,
-                                {
-                                    "default"
-                                }
-                            }
-                        }
-                    },
-                    {
-                        57,
-                        2,
-                        {
-                            "data"
+                            "flags"
                         }
                     }
                 }
@@ -12433,17 +12805,31 @@ local ObjectTree = {
                 },
                 {
                     {
-                        106,
+                        95,
                         2,
                         {
-                            "typecheck"
+                            "animate"
                         }
                     },
                     {
-                        100,
+                        105,
                         2,
                         {
-                            "formatTime"
+                            "sounds"
+                        }
+                    },
+                    {
+                        98,
+                        2,
+                        {
+                            "customFunctions"
+                        }
+                    },
+                    {
+                        102,
+                        2,
+                        {
+                            "getStringBounds"
                         }
                     },
                     {
@@ -12454,20 +12840,6 @@ local ObjectTree = {
                         }
                     },
                     {
-                        97,
-                        2,
-                        {
-                            "customFont"
-                        }
-                    },
-                    {
-                        105,
-                        2,
-                        {
-                            "tween"
-                        }
-                    },
-                    {
                         104,
                         2,
                         {
@@ -12475,17 +12847,17 @@ local ObjectTree = {
                         }
                     },
                     {
-                        103,
+                        107,
                         2,
                         {
-                            "randomString"
+                            "typecheck"
                         }
                     },
                     {
-                        98,
+                        100,
                         2,
                         {
-                            "customFunctions"
+                            "formatTime"
                         }
                     },
                     {
@@ -12503,17 +12875,24 @@ local ObjectTree = {
                         }
                     },
                     {
-                        95,
+                        97,
                         2,
                         {
-                            "animate"
+                            "customFont"
                         }
                     },
                     {
-                        102,
+                        106,
                         2,
                         {
-                            "getStringBounds"
+                            "tween"
+                        }
+                    },
+                    {
+                        103,
+                        2,
+                        {
+                            "randomString"
                         }
                     }
                 }
@@ -12526,17 +12905,17 @@ local ObjectTree = {
                 },
                 {
                     {
+                        89,
+                        2,
+                        {
+                            "UIAspectRatioConstraint"
+                        }
+                    },
+                    {
                         91,
                         2,
                         {
                             "UIListLayout"
-                        }
-                    },
-                    {
-                        90,
-                        2,
-                        {
-                            "UICorner"
                         }
                     },
                     {
@@ -12547,17 +12926,17 @@ local ObjectTree = {
                         }
                     },
                     {
+                        90,
+                        2,
+                        {
+                            "UICorner"
+                        }
+                    },
+                    {
                         92,
                         2,
                         {
                             "UIPadding"
-                        }
-                    },
-                    {
-                        89,
-                        2,
-                        {
-                            "UIAspectRatioConstraint"
                         }
                     }
                 }
@@ -12577,169 +12956,6 @@ local ObjectTree = {
                         }
                     }
                 }
-            },
-            {
-                63,
-                1,
-                {
-                    "components"
-                },
-                {
-                    {
-                        69,
-                        2,
-                        {
-                            "dropdown"
-                        }
-                    },
-                    {
-                        74,
-                        2,
-                        {
-                            "label"
-                        }
-                    },
-                    {
-                        71,
-                        2,
-                        {
-                            "hover"
-                        }
-                    },
-                    {
-                        65,
-                        2,
-                        {
-                            "button"
-                        }
-                    },
-                    {
-                        81,
-                        2,
-                        {
-                            "slider"
-                        }
-                    },
-                    {
-                        72,
-                        2,
-                        {
-                            "keybind"
-                        }
-                    },
-                    {
-                        67,
-                        2,
-                        {
-                            "colorpicker"
-                        }
-                    },
-                    {
-                        85,
-                        2,
-                        {
-                            "warn"
-                        }
-                    },
-                    {
-                        73,
-                        2,
-                        {
-                            "keybindList"
-                        }
-                    },
-                    {
-                        84,
-                        2,
-                        {
-                            "toggle"
-                        }
-                    },
-                    {
-                        83,
-                        2,
-                        {
-                            "textbox"
-                        }
-                    },
-                    {
-                        76,
-                        2,
-                        {
-                            "logPage"
-                        }
-                    },
-                    {
-                        70,
-                        2,
-                        {
-                            "group"
-                        }
-                    },
-                    {
-                        80,
-                        2,
-                        {
-                            "paragraph"
-                        }
-                    },
-                    {
-                        79,
-                        2,
-                        {
-                            "orbs"
-                        }
-                    },
-                    {
-                        78,
-                        2,
-                        {
-                            "notification"
-                        }
-                    },
-                    {
-                        75,
-                        2,
-                        {
-                            "list"
-                        }
-                    },
-                    {
-                        77,
-                        2,
-                        {
-                            "module"
-                        }
-                    },
-                    {
-                        82,
-                        2,
-                        {
-                            "tab"
-                        }
-                    },
-                    {
-                        64,
-                        2,
-                        {
-                            "announcement"
-                        }
-                    },
-                    {
-                        68,
-                        2,
-                        {
-                            "divider"
-                        }
-                    },
-                    {
-                        66,
-                        2,
-                        {
-                            "buttongroup"
-                        }
-                    }
-                }
             }
         }
     }
@@ -12748,102 +12964,103 @@ local ObjectTree = {
 -- Line offsets for debugging (only included when minifyTables is false)
 local LineOffsets = {
     8,
-    942,
-    952,
-    [5] = 1026,
-    [6] = 1244,
-    [7] = 1340,
-    [8] = 1476,
-    [9] = 1556,
-    [10] = 1600,
-    [11] = 1762,
-    [12] = 1861,
-    [13] = 1947,
-    [15] = 2036,
-    [17] = 2091,
-    [18] = 2148,
-    [19] = 2177,
-    [20] = 2201,
-    [21] = 2261,
-    [23] = 2291,
-    [24] = 2440,
-    [25] = 2461,
-    [26] = 2481,
-    [27] = 2517,
-    [28] = 2552,
-    [29] = 2589,
-    [30] = 2633,
-    [31] = 2663,
-    [32] = 2790,
-    [34] = 2901,
-    [35] = 2934,
-    [36] = 2969,
-    [37] = 2993,
-    [38] = 3039,
-    [39] = 3062,
-    [41] = 3209,
-    [42] = 3323,
-    [43] = 3572,
-    [44] = 3882,
-    [45] = 4129,
-    [46] = 4213,
-    [47] = 4276,
-    [48] = 4292,
-    [50] = 4439,
-    [51] = 4453,
-    [52] = 4507,
-    [53] = 4518,
-    [54] = 4536,
-    [55] = 4549,
-    [56] = 4578,
-    [57] = 4598,
-    [58] = 4672,
-    [59] = 5045,
-    [60] = 5068,
-    [61] = 5080,
-    [62] = 5319,
-    [64] = 5352,
-    [65] = 5493,
-    [66] = 5710,
-    [67] = 5962,
-    [68] = 6696,
-    [69] = 6742,
-    [70] = 7420,
-    [71] = 7672,
-    [72] = 7758,
-    [73] = 8177,
-    [74] = 8272,
-    [75] = 8387,
-    [76] = 8447,
-    [77] = 8595,
-    [78] = 8753,
-    [79] = 9057,
-    [80] = 9164,
-    [81] = 9318,
-    [82] = 9764,
-    [83] = 9974,
-    [84] = 10360,
-    [85] = 10865,
-    [87] = 10890,
-    [88] = 11464,
-    [89] = 11474,
-    [90] = 11486,
-    [91] = 11495,
-    [92] = 11507,
-    [93] = 11542,
-    [94] = 11551,
-    [95] = 11561,
-    [96] = 11568,
-    [97] = 11598,
-    [98] = 11614,
-    [99] = 11809,
-    [100] = 11858,
-    [101] = 11872,
-    [102] = 11879,
-    [103] = 11890,
-    [104] = 11900,
-    [105] = 11950,
-    [106] = 11957
+    944,
+    954,
+    [5] = 1028,
+    [6] = 1246,
+    [7] = 1342,
+    [8] = 1478,
+    [9] = 1558,
+    [10] = 1602,
+    [11] = 1764,
+    [12] = 1863,
+    [13] = 1949,
+    [15] = 2038,
+    [17] = 2093,
+    [18] = 2150,
+    [19] = 2179,
+    [20] = 2203,
+    [21] = 2263,
+    [23] = 2293,
+    [24] = 2442,
+    [25] = 2463,
+    [26] = 2483,
+    [27] = 2519,
+    [28] = 2554,
+    [29] = 2591,
+    [30] = 2635,
+    [31] = 2665,
+    [32] = 2792,
+    [34] = 2903,
+    [35] = 2936,
+    [36] = 2971,
+    [37] = 2995,
+    [38] = 3041,
+    [39] = 3064,
+    [41] = 3211,
+    [42] = 3325,
+    [43] = 3574,
+    [44] = 3884,
+    [45] = 4131,
+    [46] = 4215,
+    [47] = 4278,
+    [48] = 4294,
+    [50] = 4441,
+    [51] = 4455,
+    [52] = 4509,
+    [53] = 4520,
+    [54] = 4538,
+    [55] = 4551,
+    [56] = 4580,
+    [57] = 4600,
+    [58] = 4674,
+    [59] = 5047,
+    [60] = 5071,
+    [61] = 5083,
+    [62] = 5333,
+    [64] = 5366,
+    [65] = 5506,
+    [66] = 5727,
+    [67] = 5976,
+    [68] = 6720,
+    [69] = 6762,
+    [70] = 7463,
+    [71] = 7715,
+    [72] = 7803,
+    [73] = 8232,
+    [74] = 8312,
+    [75] = 8427,
+    [76] = 8476,
+    [77] = 8622,
+    [78] = 8793,
+    [79] = 9112,
+    [80] = 9223,
+    [81] = 9377,
+    [82] = 9832,
+    [83] = 10042,
+    [84] = 10437,
+    [85] = 10955,
+    [87] = 10980,
+    [88] = 11637,
+    [89] = 11647,
+    [90] = 11659,
+    [91] = 11668,
+    [92] = 11680,
+    [93] = 11715,
+    [94] = 11724,
+    [95] = 11734,
+    [96] = 11741,
+    [97] = 11771,
+    [98] = 11787,
+    [99] = 11982,
+    [100] = 12031,
+    [101] = 12045,
+    [102] = 12052,
+    [103] = 12063,
+    [104] = 12073,
+    [105] = 12123,
+    [106] = 12159,
+    [107] = 12166
 }
 
 -- Misc AOT variable imports
