@@ -206,7 +206,7 @@ ESP = {
                     local RootPart = Character:FindFirstChild("Torso") or Character:FindFirstChild("HumanoidRootPart") or Character:FindFirstChild("Body")
                     local Head = Character:FindFirstChild("MouthPart") or Character:FindFirstChild("Body") or Character:FindFirstChild("Head") or Character:FindFirstChild("Eyes") or Character:FindFirstChild("Jaw") or Character:FindFirstChild("FakeHead")
                     local Humanoid = Character:FindFirstChild("Humanoid")
-                    local IsBehindWall = ESP.Settings.WallCheck and ESP.Functions.IsPlayerBehindWall(Player)
+                    --local IsBehindWall = ESP.Settings.WallCheck and ESP.Functions.IsPlayerBehindWall(Player)
                     local ShouldShow = true
 
                     local rootPart = RootPart
