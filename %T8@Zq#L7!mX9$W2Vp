@@ -202,10 +202,6 @@ ESP = {
                 local localPlayer = Client
                 local player = Player
 
-                if isPreview then
-                    print("creating esp for esppreview")
-                end
-
 
                 if Character and (not ESP.Settings.Teamcheck or (Team and Team ~= Client.Team)) then
                     local RootPart = Character:FindFirstChild("Torso") or Character:FindFirstChild("HumanoidRootPart") or Character:FindFirstChild("Body")
@@ -229,7 +225,14 @@ ESP = {
                         if OnScreen then
                           local Hrp2D
                           if isPreview then
-                              Hrp2D = Camera.Parent.AbsolutePosition
+                              local screenPos = ESP_SETTINGS.EspPreview.Viewport:WorldToViewportPoint(RootPart.Position)
+                              local frameOffset = ESP_SETTINGS.EspPreview.Viewport.AbsolutePosition
+                              local frameSize = ESP_SETTINGS.EspPreview.Viewport.AbsoluteSize
+
+                              Hrp2D = Vector2.new(
+                                  frameOffset.X + screenPos.X * frameSize.X,
+                                  frameOffset.Y + screenPos.Y * frameSize.Y
+                              )
                           else
                               Hrp2D = Camera:WorldToViewportPoint(RootPart.Position)
                           end
