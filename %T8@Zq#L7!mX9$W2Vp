@@ -31,6 +31,7 @@ ESP = {
         SkeletonsColor = Color3.new(1, 1, 1),
         TracerPosition = "Bottom",
         EspPreview = nil,
+        SetEspPreview = false,
         Maps = {
 
         }
@@ -173,7 +174,7 @@ ESP = {
             local oldthreadidentity = getthreadidentity()
             setthreadidentity(8)
             local ESP_SETTINGS = ESP.Settings
-            if ESP_SETTINGS.EspPreview.Character and not ESP.Cache[ESP_SETTINGS.EspPreview.Character] then
+            if ESP_SETTINGS.EspPreview and not ESP_SETTINGS.SetEspPreview then
                 ESP.Functions.CacheEsp(ESP_SETTINGS.EspPreview.Character)
             end
 
@@ -211,7 +212,7 @@ ESP = {
                     local Head = Character:FindFirstChild("MouthPart") or Character:FindFirstChild("Body") or Character:FindFirstChild("Head") or Character:FindFirstChild("Eyes") or Character:FindFirstChild("Jaw") or Character:FindFirstChild("FakeHead")
                     local Humanoid = Character:FindFirstChild("Humanoid")
                     local IsBehindWall = ESP.Settings.WallCheck and ESP.Functions.IsPlayerBehindWall(Player)
-                    local ShouldShow = not IsBehindWall and ESP.Settings.Enabled
+                    local ShouldShow = true
 
                     local rootPart = RootPart
 
