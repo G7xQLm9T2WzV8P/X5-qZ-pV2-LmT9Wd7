@@ -192,7 +192,7 @@ ESP = {
                 end
 
                 if isPreview and Character then
-                    Camera = ESP_SETTINGS.EspPreview.Viewport
+                    Camera = ESP_SETTINGS.EspPreview.Viewport.CurrentCamera
                 else
                     Camera = game.Workspace.CurrentCamera
                 end
@@ -219,7 +219,13 @@ ESP = {
 
                     
                     if RootPart and Head and ShouldShow then
-                        local Pos, OnScreen = Camera:WorldToViewportPoint(RootPart.Position)
+                        local OnScreen = false
+                        if isPreview then
+                            OnScreen = true
+                        else
+                            Pos, OnScreen = Camera:WorldToViewportPoint(RootPart.Position)  
+                        end
+
                         if OnScreen then
                           local Hrp2D
                           if isPreview then
