@@ -30,7 +30,7 @@ ESP = {
         TracerThickness = 2,
         SkeletonsColor = Color3.new(1, 1, 1),
         TracerPosition = "Bottom",
-        EspPreviewCharacter = nil,
+        EspPreview = nil,
         Maps = {
 
         }
@@ -176,7 +176,7 @@ ESP = {
             setthreadidentity(8)
             local ESP_SETTINGS = ESP.Settings
             if ESP_SETTINGS.EspPreviewCharacter and not ESP.Cache[ESP_SETTINGS.EspPreviewCharacter] then
-                ESP.Functions.CacheEsp(ESP_SETTINGS.EspPreviewCharacter)
+                ESP.Functions.CacheEsp(ESP_SETTINGS.EspPreview.Character)
             end
 
             for Player, Esp in pairs(ESP.Cache) do
@@ -192,7 +192,7 @@ ESP = {
                 end
 
                 if isPreview and Character then
-                    Camera = Character.Parent.Parent.Camera
+                    Camera = ESP_SETTINGS.EspPreview.Viewport.CurrentCamera
                 else
                     Camera = game.Workspace.CurrentCamera
                 end
@@ -201,6 +201,10 @@ ESP = {
                 local camera = Camera
                 local localPlayer = Client
                 local player = Player
+
+                if isPreview then
+                    print("creating esp for esppreview")
+                end
 
 
                 if Character and (not ESP.Settings.Teamcheck or (Team and Team ~= Client.Team)) then
