@@ -225,7 +225,7 @@ ESP = {
                         if OnScreen then
                           local Hrp2D
                           if isPreview then
-                              local screenPos = ESP_SETTINGS.EspPreview.Viewport:WorldToViewportPoint(RootPart.Position)
+                              local screenPos = ESP_SETTINGS.EspPreview.Viewport.CurrentCamera:WorldToViewportPoint(RootPart.Position)
                               local frameOffset = ESP_SETTINGS.EspPreview.Viewport.AbsolutePosition
                               local frameSize = ESP_SETTINGS.EspPreview.Viewport.AbsoluteSize
 
