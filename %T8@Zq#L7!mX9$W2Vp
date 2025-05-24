@@ -184,7 +184,6 @@ ESP = {
                 local isPreview = false
 
                 if Player.Parent and Player.Parent:IsA("WorldModel") then
-                    print(Player:GetFullName())
                     isPreview = true
                 else    
                     Character = Player.Character
@@ -291,7 +290,7 @@ ESP = {
                                     if #esp.boxLines == 0 then
                                         for i = 1, 16 do
                                             local boxLine = ESP.Functions.CreateDrawing("Line", {
-                                                Thickness = 1,
+                                                Thickness = 1.5,
                                                 Color = ESP_SETTINGS.BoxColor,
                                                 Transparency = 1
                                             })
