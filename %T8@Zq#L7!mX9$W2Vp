@@ -225,14 +225,13 @@ ESP = {
                         if OnScreen then
                           local Hrp2D
                           if isPreview then
-                              local screenPos = ESP_SETTINGS.EspPreview.Viewport.CurrentCamera:WorldToViewportPoint(RootPart.Position)
-                              local frameOffset = ESP_SETTINGS.EspPreview.Viewport.AbsolutePosition
                               local frameSize = ESP_SETTINGS.EspPreview.Viewport.AbsoluteSize
 
                               Hrp2D = Vector2.new(
-                                  frameOffset.X + screenPos.X * frameSize.X,
-                                  frameOffset.Y + screenPos.Y * frameSize.Y
+                                  screenPos.X * frameSize.X,
+                                  screenPos.Y * frameSize.Y
                               )
+
                           else
                               Hrp2D = Camera:WorldToViewportPoint(RootPart.Position)
                           end
@@ -385,7 +384,7 @@ ESP = {
                                 esp.healthOutline.Visible = true
                                 esp.health.Visible = true
                                 
-                                local humanoid = player.Character and player.Character:FindFirstChild("Humanoid")
+                                local humanoid = player:FindFirstChild("Humanoid") or player.Character and player.Character:FindFirstChild("Humanoid")
                                 local CurrentHealth = humanoid and humanoid.Health or player:GetAttribute("Health") or 0
                                 local MaxHealth = humanoid and humanoid.MaxHealth or player:GetAttribute("MaxHealth") or 0
                             
@@ -433,8 +432,8 @@ ESP = {
                                 if #esp["skeletonlines"] == 0 then
                                     local Type = "R6"
 
-                                    if player.Character:FindFirstChildOfClass("Humanoid") and
-                                    player.Character:FindFirstChildOfClass("Humanoid").RigType == Enum.HumanoidRigType.R15 then
+                                    if player:FindFirstChildOfClass("Humanoid") or player.Character:FindFirstChildOfClass("Humanoid") and
+                                    player:FindFirstChildOfClass("Humanoid").RigType == Enum.HumanoidRigType.R15 or player.Character:FindFirstChildOfClass("Humanoid").RigType == Enum.HumanoidRigType.R15 then
                                         Type = "R15"
                                     else
                                         Type = "R6"
@@ -443,7 +442,7 @@ ESP = {
                                     for _, bonePair in ipairs(ESP.Bones[Type]) do
                                         local parentBone, childBone = bonePair[1], bonePair[2]
                                         
-                                        if player.Character and player.Character:FindFirstChild(parentBone) and player.Character:FindFirstChild(childBone) then
+                                        if player:FindFirstChild(parentBone) or player.Character and player.Character:FindFirstChild(parentBone) and player:FindFirstChild(parentBone) or player.Character:FindFirstChild(childBone) then
                                             local skeletonLine = ESP.Functions.CreateDrawing("Line", {
                                                 Thickness = 1,
                                                 Color = ESP_SETTINGS.SkeletonsColor,
@@ -458,10 +457,10 @@ ESP = {
                                     local skeletonLine = lineData[1]
                                     local parentBone, childBone = lineData[2], lineData[3]
                             
-                                    if player.Character and player.Character[parentBone] and player.Character[childBone] then
+                                    if player:FindFirstChild(parentBone) or player.Character and player.Character[parentBone] and player:FindFirstChild(parentBone) or player.Character[childBone] then
                                         pcall(function()
-                                        local parentPosition = camera:WorldToViewportPoint(player.Character[parentBone].Position)
-                                        local childPosition = camera:WorldToViewportPoint(player.Character[childBone].Position)
+                                        local parentPosition = camera:WorldToViewportPoint(player[parentBone].Position or player.Character[parentBone].Position)
+                                        local childPosition = camera:WorldToViewportPoint(playeR[parentBone].Position or player.Character[childBone].Position)
                             
                                         skeletonLine.From = Vector2.new(parentPosition.X, parentPosition.Y)
                                         skeletonLine.To = Vector2.new(childPosition.X, childPosition.Y)
