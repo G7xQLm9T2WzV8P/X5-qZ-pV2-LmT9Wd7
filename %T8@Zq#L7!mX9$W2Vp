@@ -173,8 +173,7 @@ ESP = {
             local oldthreadidentity = getthreadidentity()
             setthreadidentity(8)
             local ESP_SETTINGS = ESP.Settings
-            if ESP_SETTINGS.EspPreviewCharacter and not ESP.Cache[ESP_SETTINGS.EspPreviewCharacter] then
-                print("cached")
+            if ESP_SETTINGS.EspPreview.Character and not ESP.Cache[ESP_SETTINGS.EspPreview.Character] then
                 ESP.Functions.CacheEsp(ESP_SETTINGS.EspPreview.Character)
             end
 
