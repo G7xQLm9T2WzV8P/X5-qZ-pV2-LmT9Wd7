@@ -187,7 +187,9 @@ ESP = {
                 if Player:IsA("Player") then
                     Character = Player.Character
                     Team = Player.Team
+                    print("RICCHIONE")
                 else
+                    print("NOOO BIG CHUNGUS")
                     isPreview = true
                 end
 
