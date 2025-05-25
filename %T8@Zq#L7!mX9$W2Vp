@@ -410,7 +410,7 @@ ESP = {
                                 esp.healthOutline.Visible = true
                                 esp.health.Visible = true
                                 
-                                local humanoid = player:FindFirstChild("Humanoid") or player.Character and player.Character:FindFirstChild("Humanoid")
+                                local humanoid = Character:FindFirstChildOfClass("Humanoid")
                                 local CurrentHealth = humanoid and humanoid.Health or player:GetAttribute("Health") or 0
                                 local MaxHealth = humanoid and humanoid.MaxHealth or player:GetAttribute("MaxHealth") or 0
                             
@@ -458,8 +458,8 @@ ESP = {
                                if #esp["skeletonlines"] == 0 then
                                    local Type = "R6"
 
-                                    if player.Character:FindFirstChildOfClass("Humanoid") and
-                                    player.Character:FindFirstChildOfClass("Humanoid").RigType == Enum.HumanoidRigType.R15 then
+                                    local humanoid = Character:FindFirstChildOfClass("Humanoid")
+                                    if humanoid and humanoid.RigType == Enum.HumanoidRigType.R15 then
                                         Type = "R15"
                                     else
                                         Type = "R6"
@@ -468,7 +468,7 @@ ESP = {
                                     for _, bonePair in ipairs(ESP.Bones[Type]) do
                                         local parentBone, childBone = bonePair[1], bonePair[2]
                                         
-                                        if player.Character and player.Character:FindFirstChild(parentBone) and player.Character:FindFirstChild(childBone) then
+                                        if Character:FindFirstChild(parentBone) and Character:FindFirstChild(childBone) then
                                             local skeletonLine = ESP.Functions.CreateDrawing("Line", {
                                                 Thickness = 1,
                                                 Color = ESP_SETTINGS.SkeletonsColor,
@@ -483,10 +483,10 @@ ESP = {
                                     local skeletonLine = lineData[1]
                                     local parentBone, childBone = lineData[2], lineData[3]
                             
-                                    if player.Character and player.Character[parentBone] and player.Character[childBone] then
+                                    if Character[parentBone] and Character[childBone] then
                                         pcall(function()
-                                        local parentPosition = camera:WorldToViewportPoint(player.Character[parentBone].Position)
-                                        local childPosition = camera:WorldToViewportPoint(player.Character[childBone].Position)
+                                        local parentPosition = camera:WorldToViewportPoint(Character[parentBone].Position)
+                                        local childPosition = camera:WorldToViewportPoint(Character[childBone].Position)
                             
                                         skeletonLine.From = Vector2.new(parentPosition.X, parentPosition.Y)
                                         skeletonLine.To = Vector2.new(childPosition.X, childPosition.Y)
