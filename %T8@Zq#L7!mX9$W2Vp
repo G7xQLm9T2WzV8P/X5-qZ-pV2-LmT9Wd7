@@ -456,19 +456,16 @@ ESP = {
 
         
                             if ESP_SETTINGS.ShowSkeletons and ESP_SETTINGS.Enabled then
-                               if #esp["skeletonlines"] == 0 then
-                                   local Type = "R6"
-
+                                if #esp["skeletonlines"] == 0 then
+                                    local Type = "R6"
                                     local humanoid = Character:FindFirstChildOfClass("Humanoid")
                                     if humanoid and humanoid.RigType == Enum.HumanoidRigType.R15 then
                                         Type = "R15"
-                                    else
-                                        Type = "R6"
                                     end
 
                                     for _, bonePair in ipairs(ESP.Bones[Type]) do
                                         local parentBone, childBone = bonePair[1], bonePair[2]
-                                        
+            
                                         if Character:FindFirstChild(parentBone) and Character:FindFirstChild(childBone) then
                                             local skeletonLine = ESP.Functions.CreateDrawing("Line", {
                                                 Thickness = 1,
@@ -479,20 +476,37 @@ ESP = {
                                         end
                                     end
                                 end
-                            
+
                                 for _, lineData in ipairs(esp["skeletonlines"]) do
                                     local skeletonLine = lineData[1]
                                     local parentBone, childBone = lineData[2], lineData[3]
-                            
+
                                     if Character[parentBone] and Character[childBone] then
                                         pcall(function()
-                                        local parentPosition = camera:WorldToViewportPoint(Character[parentBone].Position)
-                                        local childPosition = camera:WorldToViewportPoint(Character[childBone].Position)
-                            
-                                        skeletonLine.From = Vector2.new(parentPosition.X, parentPosition.Y)
-                                        skeletonLine.To = Vector2.new(childPosition.X, childPosition.Y)
-                                       skeletonLine.Color = ESP_SETTINGS.SkeletonsColor
-                                        skeletonLine.Visible = true                                            
+                                            local parentPosition, childPosition
+                
+                                            if isPreview then
+                                                parentPosition = ESP.Functions.CharacterToViewport3D(
+                                                    Viewport,
+                                                    Character[parentBone].Position
+                                                )
+                                                childPosition = ESP.Functions.CharacterToViewport3D(
+                                                    Viewport,
+                                                    Character[childBone].Position
+                                                )
+                                            else
+                                                parentPosition = camera:WorldToViewportPoint(Character[parentBone].Position)
+                                                childPosition = camera:WorldToViewportPoint(Character[childBone].Position)
+                                            end
+
+                                            if parentPosition and childPosition then
+                                                skeletonLine.From = Vector2.new(parentPosition.X, parentPosition.Y)
+                                                skeletonLine.To = Vector2.new(childPosition.X, childPosition.Y)
+                                                skeletonLine.Color = ESP_SETTINGS.SkeletonsColor
+                                                skeletonLine.Visible = true
+                                            else
+                                                skeletonLine.Visible = false
+                                            end
                                         end)
                                     else
                                         skeletonLine:Remove()
