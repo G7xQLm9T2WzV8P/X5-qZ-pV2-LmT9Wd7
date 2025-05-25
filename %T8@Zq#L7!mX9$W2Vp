@@ -649,6 +649,8 @@ ESP = {
     }
 }
 
+ESP.Functions.PlayViewportAnimation()
+
 for _, player in ipairs(Players:GetPlayers()) do
     if player ~= Client then
         ESP.Functions.CacheEsp(player)
