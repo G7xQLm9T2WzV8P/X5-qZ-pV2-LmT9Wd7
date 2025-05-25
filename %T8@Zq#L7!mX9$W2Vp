@@ -457,7 +457,7 @@ ESP = {
                                     for _, bonePair in ipairs(ESP.Bones[Type]) do
                                         local parentBone, childBone = bonePair[1], bonePair[2]
                                         
-                                        if if (player:FindFirstChildOfClass("Humanoid") or player.Character:FindFirstChildOfClass("Humanoid")) and
+                                        if (player:FindFirstChildOfClass("Humanoid") or player.Character:FindFirstChildOfClass("Humanoid")) and
                                            ((player:FindFirstChildOfClass("Humanoid") and player:FindFirstChildOfClass("Humanoid").RigType == Enum.HumanoidRigType.R15) or
                                             (player.Character:FindFirstChildOfClass("Humanoid") and player.Character:FindFirstChildOfClass("Humanoid").RigType == Enum.HumanoidRigType.R15)) then
                                             local skeletonLine = ESP.Functions.CreateDrawing("Line", {
