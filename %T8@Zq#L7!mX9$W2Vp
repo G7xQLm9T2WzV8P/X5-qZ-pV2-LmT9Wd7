@@ -80,6 +80,48 @@ ESP = {
             return Drawing
         end,
 
+        PlayViewportAnimation = function()
+            if ESP.Settings.EspPreview and ESP.Settings.EspPreview.Character then
+                if ESP.Settings.PlayingAnimations then return end
+                ESP.Settings.PlayingAnimations = true
+                local Character = ESP.Settings.EspPreview.Character
+                local Humanoid = Character and Character:FindFirstChildOfClass("Humanoid")
+
+                local Animations = {
+                    R6 = {27789359, 30196114, 248263260, 45834924, 33796059, 28488254, 52155728},
+                    R15 = {3333432454, 4555808220, 10713981723, 10714372526, 10714076981, 11444443576, 15693621070, 17360699557, 10714377090, 134283166482394}
+                }
+
+                if Humanoid then
+                    local RigType = Humanoid.RigType == Enum.HumanoidRigType.R6 and "R6" or "R15"
+                    local AnimList = Animations[RigType]
+
+                    task.spawn(function()
+                        while ESP.Settings.PlayingAnimations and Character and Character.Parent do
+                            task.wait()
+                            for _, AnimationID in ipairs(AnimList) do
+                                if not ESP.Settings.PlayingAnimations then break end
+
+                                local Animation = Instance.new("Animation")
+                                Animation.AnimationId = "rbxassetid://" .. AnimationID
+
+                                local Track = Humanoid:LoadAnimation(Animation)
+                                Track.Priority = Enum.AnimationPriority.Action
+                                Track:Play()
+
+                                local Duration = Track.Length > 0 and Track.Length or 2.5
+                                task.wait(Duration)
+
+                                Track:Stop()
+                                Animation:Destroy()
+                            end
+                        end
+                        ESP.Settings.PlayingAnimations = false
+                    end)
+                end
+            end
+        end,
+
         CharacterToViewport3D = function(Viewport, Point3D)
             local Camera = Viewport.CurrentCamera
             local FOV = math.rad(Camera.FieldOfView)
@@ -229,6 +271,7 @@ ESP = {
                 end
 
                 if isPreview and Character then
+                    ESP.Functions.PlayViewportAnimation()
                     Camera = ESP_SETTINGS.EspPreview.Viewport.CurrentCamera
                     Viewport = ESP_SETTINGS.EspPreview.Viewport
                 else
