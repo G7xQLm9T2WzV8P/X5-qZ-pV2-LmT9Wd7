@@ -256,14 +256,6 @@ ESP = {
                     if RootPart and Head and ShouldShow then
                         local screenPos, OnScreen = Camera:WorldToViewportPoint(RootPart.Position)  
 
-                        if isPreview and ESP_SETTINGS.UI then
-                            for _, X in ESP_SETTINGS.UI:GetChildren() do
-                                if not X.Visible and X:IsA("Frame") then
-                                    OnScreen = false
-                                end
-                            end
-                        end
-
                         if OnScreen then
                           local Hrp2D
                           if isPreview then
