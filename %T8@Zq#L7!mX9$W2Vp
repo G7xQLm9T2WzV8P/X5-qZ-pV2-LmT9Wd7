@@ -231,15 +231,15 @@ ESP = {
                               Hrp2D = Camera:WorldToViewportPoint(RootPart.Position)
                           end
 
-                          print("2DD233")
+                          print("2DD2333132")
                           local CharSize = (Camera:WorldToViewportPoint(RootPart.Position - Vector3.new(0, 3, 0)).Y 
-                                            - Camera:WorldToViewportPoint(RootPart.Position + Vector3.new(0, 2.6, 0)).Y) / 2 + (isPreview and 80 or 0)
+                                            - Camera:WorldToViewportPoint(RootPart.Position + Vector3.new(0, 2.6, 0)).Y) / 2 + (isPreview and 100 or 0)
 
                           local boxSize = Vector2.new(math.floor(CharSize * 1.8), math.floor(CharSize * 1.9))
 
                           local boxPosition
                           if isPreview then
-                              boxPosition = Vector2.new(math.floor(Hrp2D.X - CharSize * 1.8 / 2)+800, math.floor(Hrp2D.Y - CharSize * 1.6 / 2)+500)
+                              boxPosition = Vector2.new(math.floor(Hrp2D.X - CharSize * 1.8 / 2)+850, math.floor(Hrp2D.Y - CharSize * 1.6 / 2)+500)
                           else
                               boxPosition = Vector2.new(math.floor(Hrp2D.X - CharSize * 1.8 / 2), math.floor(Hrp2D.Y - CharSize * 1.6 / 2))
                           end
