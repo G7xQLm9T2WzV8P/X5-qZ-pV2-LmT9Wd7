@@ -256,7 +256,7 @@ ESP = {
 
                           local boxSize = Vector2.new(math.floor(CharSize * 1.8), math.floor(CharSize * 1.9))
 
-                          local yOffset = isPreview and 10 or 0
+                          local yOffset = isPreview and 55 or 0
 
                           local boxPosition = Vector2.new(
                             math.floor(Hrp2D.X - CharSize * 1.8 / 2),
