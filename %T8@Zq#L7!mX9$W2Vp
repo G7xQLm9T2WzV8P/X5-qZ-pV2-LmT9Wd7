@@ -236,6 +236,8 @@ ESP = {
                     --local IsBehindWall = ESP.Settings.WallCheck and ESP.Functions.IsPlayerBehindWall(Player)
                     local ShouldShow = true
 
+                    print("d2")
+
                     local rootPart = RootPart
 
 
