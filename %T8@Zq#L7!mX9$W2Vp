@@ -445,13 +445,12 @@ ESP = {
                             end
 
         
-                            if ESP_SETTINGS.ShowSkeletons and ESP_SETTINGS.Enabled then
+                                   if ESP_SETTINGS.ShowSkeletons and ESP_SETTINGS.Enabled then
                                 if #esp["skeletonlines"] == 0 then
                                     local Type = "R6"
 
-                                     if (player:FindFirstChildOfClass("Humanoid") or player.Character:FindFirstChildOfClass("Humanoid")) and
-                                        ((player:FindFirstChildOfClass("Humanoid") and player:FindFirstChildOfClass("Humanoid").RigType == Enum.HumanoidRigType.R15) or
-                                        (player.Character:FindFirstChildOfClass("Humanoid") and player.Character:FindFirstChildOfClass("Humanoid").RigType == Enum.HumanoidRigType.R15)) then
+                                    if player:FindFirstChildOfClass("Humanoid") or player.Character:FindFirstChildOfClass("Humanoid") and
+                                    player:FindFirstChildOfClass("Humanoid").RigType == Enum.HumanoidRigType.R15 or player.Character:FindFirstChildOfClass("Humanoid").RigType == Enum.HumanoidRigType.R15 then
                                         Type = "R15"
                                     else
                                         Type = "R6"
@@ -460,9 +459,7 @@ ESP = {
                                     for _, bonePair in ipairs(ESP.Bones[Type]) do
                                         local parentBone, childBone = bonePair[1], bonePair[2]
                                         
-                                       if player:FindFirstChild(parentBone)
-                                           or (player.Character and player.Character:FindFirstChild(parentBone))
-                                           or (player.Character and player.Character:FindFirstChild(childBone)) then
+                                        if player:FindFirstChild(parentBone) or player.Character and player.Character:FindFirstChild(parentBone) and player:FindFirstChild(parentBone) or player.Character:FindFirstChild(childBone) then
                                             local skeletonLine = ESP.Functions.CreateDrawing("Line", {
                                                 Thickness = 1,
                                                 Color = ESP_SETTINGS.SkeletonsColor,
@@ -477,17 +474,16 @@ ESP = {
                                     local skeletonLine = lineData[1]
                                     local parentBone, childBone = lineData[2], lineData[3]
                             
-                                    
-                                    local hasParent = player:FindFirstChild(parentBone) or (player.Character and player.Character:FindFirstChild(parentBone))
-                                    local hasChild = player:FindFirstChild(childBone) or (player.Character and player.Character:FindFirstChild(childBone))
-                                    if hasParent and hasChild then
+                                    if player:FindFirstChild(parentBone) or player.Character and player.Character[parentBone] and player:FindFirstChild(parentBone) or player.Character[childBone] then
+                                        pcall(function()
                                         local parentPosition = camera:WorldToViewportPoint(player[parentBone].Position or player.Character[parentBone].Position)
-                                        local childPosition = camera:WorldToViewportPoint(player[childBone].Position or player.Character[childBone].Position)
+                                        local childPosition = camera:WorldToViewportPoint(playeR[parentBone].Position or player.Character[childBone].Position)
                             
                                         skeletonLine.From = Vector2.new(parentPosition.X, parentPosition.Y)
                                         skeletonLine.To = Vector2.new(childPosition.X, childPosition.Y)
                                         skeletonLine.Color = ESP_SETTINGS.SkeletonsColor
                                         skeletonLine.Visible = true                                            
+                                        end)
                                     else
                                         skeletonLine:Remove()
                                         esp["skeletonlines"][_] = nil
@@ -499,7 +495,7 @@ ESP = {
                                     skeletonLine:Remove()
                                 end
                                 esp["skeletonlines"] = {}
-                            end                    
+                            end                               
         
                             if ESP_SETTINGS.ShowTracer and ESP_SETTINGS.Enabled then
                                 local tracerY
