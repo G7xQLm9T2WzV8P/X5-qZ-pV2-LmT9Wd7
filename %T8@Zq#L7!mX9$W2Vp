@@ -1,3 +1,200 @@
+
+local Players = game:GetService("Players")
+local Client = Players.LocalPlayer
+local Camera = game.Workspace.CurrentCamera
+local Workspace = game.Workspace
+
+local ESP
+ESP = {
+    Settings = {
+        BoxOutlineColor = Color3.new(0, 0, 0),
+        BoxColor = Color3.new(1, 1, 1),
+        NameColor = Color3.new(1, 1, 1),
+        HealthOutlineColor = Color3.new(0, 0, 0),
+        HealthHighColor = Color3.new(0, 1, 0),
+        HealthLowColor = Color3.new(1, 0, 0),
+        CharSize = Vector2.new(4, 6),
+        Teamcheck = false,
+        WallCheck = false,
+        Enabled = false,
+        ShowBox = false,
+        BoxType = "2D",
+        ShowName = false,
+        ShowChams = false,
+        ShowTool = false,
+        ShowHealth = false,
+        ShowDistance = false,
+        ShowSkeletons = false,
+        ShowTracer = false,
+        TracerColor = Color3.fromRGB(98,105,188), 
+        TracerThickness = 2,
+        SkeletonsColor = Color3.new(1, 1, 1),
+        TracerPosition = "Bottom",
+        EspPreview = nil,
+        SetEspPreview = false,
+        Maps = {
+
+        }
+    },
+
+    Cache = {},
+
+    Bones = {
+        R6 = {
+            {"Head", "Torso"},
+            {"Torso", "Left Arm"},
+            {"Torso", "Left Leg"},
+            {"Torso", "Right Arm"},
+            {"Torso", "Right Leg"},
+        },
+        R15 = {
+            {"Head", "UpperTorso"},
+            {"UpperTorso", "RightUpperArm"},
+            {"RightUpperArm", "RightLowerArm"},
+            {"RightLowerArm", "RightHand"},
+            {"UpperTorso", "LeftUpperArm"},
+            {"LeftUpperArm", "LeftLowerArm"},
+            {"LeftLowerArm", "LeftHand"},
+            {"UpperTorso", "LowerTorso"},
+            {"LowerTorso", "LeftUpperLeg"},
+            {"LeftUpperLeg", "LeftLowerLeg"},
+            {"LeftLowerLeg", "LeftFoot"},
+            {"LowerTorso", "RightUpperLeg"},
+            {"RightUpperLeg", "RightLowerLeg"},
+            {"RightLowerLeg", "RightFoot"}
+        }
+    },
+    
+
+    Functions = {
+        CreateDrawing = function(Class, Properties)
+            if not Class or not Properties then return end
+
+
+            local Drawing = Drawing.new(Class)
+            for Property, X in Properties do
+                Drawing[Property] = X
+            end
+
+            return Drawing
+        end,
+
+        CharacterToViewport3D = function(Viewport, Point3D)
+            local Camera = Viewport.CurrentCamera
+            local FOV = math.rad(Camera.FieldOfView)
+            local Aspect = Viewport.AbsoluteSize.X / Viewport.AbsoluteSize.Y
+
+            local CameraInSpace = Camera.CFrame:pointToObjectSpace(Point3D)
+
+            if CameraInSpace.Z >= 0 then
+                return nil
+            end
+
+            local X = (CameraInSpace.X / -CameraInSpace.Z) / math.tan(FOV / 2) / Aspect
+            local Y = (CameraInSpace.Y / -CameraInSpace.Z) / math.tan(FOV / 2)
+
+            local Pixel = {
+                X = nil,
+                Y = nil
+            }
+
+            Pixel.X = (X * 0.5 + 0.5) * Viewport.AbsoluteSize.X + Viewport.AbsolutePosition.X
+            Pixel.Y = (-Y * 0.5 + 0.5) * Viewport.AbsoluteSize.Y + Viewport.AbsolutePosition.Y
+
+            return Vector2.new(Pixel.X, Pixel.Y)
+        end,
+
+        CacheEsp = function(Player)
+            local FunctionDirectory = ESP.Functions
+            local SettingsDirectory = ESP.Settings
+ 
+            
+            local Main = {
+                tracer = FunctionDirectory.CreateDrawing("Line", {
+                    Thickness = SettingsDirectory.TracerThickness,
+                    Color = SettingsDirectory.TracerColor,
+                    Transparency = 0.5  
+                }),
+
+                boxOutline = FunctionDirectory.CreateDrawing("Square", {
+                    Color = SettingsDirectory.BoxOutlineColor,
+                    Thickness = 3,
+                    Filled = false
+                }),
+
+                box = FunctionDirectory.CreateDrawing("Square", {
+                    Color = SettingsDirectory.BoxColor,
+                    Thickness = 1,
+                    Filled = false                    
+                }),
+
+                name = FunctionDirectory.CreateDrawing("Text", {
+                    Color = SettingsDirectory.NameColor,
+                    Outline = true,
+                    Center = true,
+                    Size = 13.5,
+                    Font = Drawing.Fonts.Monospace
+                }),
+
+                healthOutline = FunctionDirectory.CreateDrawing("Line", {
+                    Thickness = 3,
+                    Color = SettingsDirectory.HealthOutlineColor
+                }),
+
+                health = FunctionDirectory.CreateDrawing("Line", {
+                    Thickness = 2
+                }),
+
+                distance = FunctionDirectory.CreateDrawing("Text", {
+                    Color = Color3.new(1, 1, 1),
+                    Size = 13.5,
+                    Outline = true,
+                    Center = true,
+                    Font = Drawing.Fonts.Monospace
+                }),
+
+                tool = FunctionDirectory.CreateDrawing("Text", {
+                    Color = Color3.new(1, 1, 1),
+                    Size = 13.5,
+                    Outline = true,
+                    Center = true,
+                    Font = Drawing.Fonts.Monospace
+                }),
+
+                boxLines = {}
+            }
+
+            
+            ESP.Cache[Player] = Main
+            ESP.Cache[Player]["skeletonlines"] = {}
+        end,
+
+        RemoveEsp = function(Player)
+            local X = ESP.Cache[Player]
+            if not X then return end
+        
+            for _, drawing in pairs(X) do
+                if drawing and drawing.Remove then
+                drawing:Remove()
+               end
+            end
+        
+            ESP.Cache[Player] = nil
+        end,
+
+        IsPlayerBehindWall = function(Player)
+            local Character = Player.Character
+            if not Character then return false end
+
+            local HumanoidRootPart = Character:FindFirstChild("HumanoidRootPart") or Character:FindFirstChild("Body")
+            if not HumanoidRootPart then return false end
+
+            local Ray = Ray.new(Camera.CFrame.Position, (HumanoidRootPart.Position - Camera.CFrame.Position).Unit * (HumanoidRootPart.Position - Camera.CFrame.Position).Magnitude)
+            local Hit, Position = Workspace:FindPartOnRayWithIgnoreList(Ray, {Client.Character, Character})
+            
+            return Hit and Hit:IsA("Part")
+        end,
+
 UpdateEsp = function()
     local oldthreadidentity = getthreadidentity()
     setthreadidentity(8)
@@ -349,3 +546,22 @@ UpdateEsp = function()
 
     setthreadidentity(oldthreadidentity)
 end
+
+    }
+}
+
+for _, player in ipairs(Players:GetPlayers()) do
+    if player ~= Client then
+        ESP.Functions.CacheEsp(player)
+    end
+end
+
+Players.PlayerAdded:Connect(function(player)
+    if player ~= Client then
+        ESP.Functions.CacheEsp(player)
+    end
+end)
+
+Players.PlayerRemoving:Connect(ESP.Functions.RemoveEsp)
+
+return ESP
