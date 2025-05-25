@@ -182,6 +182,13 @@ ESP = {
             ESP.Cache[Player] = nil
         end,
 
+        ClearPreview = function()
+            if ESP.Settings.EspPreview then
+                ESP.Functions.RemoveEsp(ESP.Settings.EspPreview.Character)
+                ESP.Settings.EspPreview = nil
+            end
+        end,
+
         IsPlayerBehindWall = function(Player)
             local Character = Player.Character
             if not Character then return false end
@@ -199,8 +206,12 @@ ESP = {
             local oldthreadidentity = getthreadidentity()
             setthreadidentity(8)
             local ESP_SETTINGS = ESP.Settings
-            if ESP_SETTINGS.EspPreview and not ESP_SETTINGS.SetEspPreview then
-                ESP.Functions.CacheEsp(ESP_SETTINGS.EspPreview.Character)
+            if ESP_SETTINGS.SetEspPreview and ESP_SETTINGS.EspPreview then
+                if not ESP.Cache[ESP_SETTINGS.EspPreview.Character] then
+                    ESP.Functions.CacheEsp(ESP_SETTINGS.EspPreview.Character)
+                end
+            elseif not ESP_SETTINGS.SetEspPreview and ESP_SETTINGS.EspPreview then
+                ESP.Functions.ClearPreview()
             end
 
             for Player, Esp in pairs(ESP.Cache) do
