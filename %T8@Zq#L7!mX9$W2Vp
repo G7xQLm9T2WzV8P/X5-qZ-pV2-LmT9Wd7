@@ -505,7 +505,7 @@ ESP = {
 
                                             if parentPosition and childPosition then
                                                 skeletonLine.From = Vector2.new(parentPosition.X, parentPosition.Y + yOffset)
-                                                skeletonLine.To = Vector2.new(childPosition.X, childPosition.Y * yOffset)
+                                                skeletonLine.To = Vector2.new(childPosition.X, childPosition.Y + yOffset)
                                                 skeletonLine.Color = ESP_SETTINGS.SkeletonsColor
                                                 skeletonLine.Visible = true
                                             else
