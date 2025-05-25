@@ -474,7 +474,10 @@ ESP = {
                                     local skeletonLine = lineData[1]
                                     local parentBone, childBone = lineData[2], lineData[3]
                             
-                                    if player:FindFirstChild(parentBone) or player.Character and player.Character[parentBone] and player:FindFirstChild(parentBone) or player.Character[childBone] then
+                                    
+                                    local hasParent = player:FindFirstChild(parentBone) or (player.Character and player.Character:FindFirstChild(parentBone))
+                                    local hasChild = player:FindFirstChild(childBone) or (player.Character and player.Character:FindFirstChild(childBone))
+                                    if hasParent and hasChild then
                                         pcall(function()
                                         local parentPosition = camera:WorldToViewportPoint(player[parentBone].Position or player.Character[parentBone].Position)
                                         local childPosition = camera:WorldToViewportPoint(player[parentBone].Position or player.Character[childBone].Position)
