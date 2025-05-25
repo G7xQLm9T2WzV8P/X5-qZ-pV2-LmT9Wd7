@@ -649,7 +649,12 @@ ESP = {
     }
 }
 
-ESP.Functions.PlayViewportAnimation()
+task.spawn(function()
+    repeat 
+        task.wait(0.1)
+    until ESP.Settings.EspPreview and ESP.Settings.EspPreview.Character
+    ESP.Functions.PlayViewportAnimation()
+end)
 
 for _, player in ipairs(Players:GetPlayers()) do
     if player ~= Client then
