@@ -253,7 +253,7 @@ ESP = {
 
                           print("nul nul")
                           local CharSize = (Camera:WorldToViewportPoint(RootPart.Position - Vector3.new(0, 3, 0)).Y 
-                                            - Camera:WorldToViewportPoint(RootPart.Position + Vector3.new(0, 2.6, 0)).Y) / 2 + (isPreview and 100 or 0)
+                                            - Camera:WorldToViewportPoint(RootPart.Position + Vector3.new(0, 2.6, 0)).Y) / 2 + (isPreview and 140 or 0)
 
                           local boxSize = Vector2.new(math.floor(CharSize * 1.8), math.floor(CharSize * 1.9))
 
