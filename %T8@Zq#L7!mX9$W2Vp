@@ -478,15 +478,13 @@ ESP = {
                                     local hasParent = player:FindFirstChild(parentBone) or (player.Character and player.Character:FindFirstChild(parentBone))
                                     local hasChild = player:FindFirstChild(childBone) or (player.Character and player.Character:FindFirstChild(childBone))
                                     if hasParent and hasChild then
-                                        pcall(function()
                                         local parentPosition = camera:WorldToViewportPoint(player[parentBone].Position or player.Character[parentBone].Position)
-                                        local childPosition = camera:WorldToViewportPoint(player[parentBone].Position or player.Character[childBone].Position)
+                                        local childPosition = camera:WorldToViewportPoint(player[childBone].Position or player.Character[childBone].Position)
                             
                                         skeletonLine.From = Vector2.new(parentPosition.X, parentPosition.Y)
                                         skeletonLine.To = Vector2.new(childPosition.X, childPosition.Y)
                                         skeletonLine.Color = ESP_SETTINGS.SkeletonsColor
                                         skeletonLine.Visible = true                                            
-                                        end)
                                     else
                                         skeletonLine:Remove()
                                         esp["skeletonlines"][_] = nil
