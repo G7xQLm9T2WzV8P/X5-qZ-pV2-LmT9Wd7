@@ -490,18 +490,20 @@ ESP = {
                                                     Viewport,
                                                     Character[parentBone].Position
                                                 )
+                                                parentPosition.Y = parentPosition.Y + 58
                                                 childPosition = ESP.Functions.CharacterToViewport3D(
                                                     Viewport,
                                                     Character[childBone].Position
                                                 )
+                                                childPosition.Y = childPosition.Y + 58
                                             else
                                                 parentPosition = camera:WorldToViewportPoint(Character[parentBone].Position)
                                                 childPosition = camera:WorldToViewportPoint(Character[childBone].Position)
                                             end
 
                                             if parentPosition and childPosition then
-                                                skeletonLine.From = Vector2.new(parentPosition.X, parentPosition.Y+58)
-                                                skeletonLine.To = Vector2.new(childPosition.X, childPosition.Y+58)
+                                                skeletonLine.From = Vector2.new(parentPosition.X, parentPosition.Y)
+                                                skeletonLine.To = Vector2.new(childPosition.X, childPosition.Y)
                                                 skeletonLine.Color = ESP_SETTINGS.SkeletonsColor
                                                 skeletonLine.Visible = true
                                             else
