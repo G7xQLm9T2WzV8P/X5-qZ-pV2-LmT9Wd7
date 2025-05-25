@@ -218,20 +218,20 @@ ESP = {
 
                         if OnScreen then
                           local Hrp2D
-                          local FramePosition
                           if isPreview then
-                            FramePosition = ESP_SETTINGS.EspPreview.Viewport.AbsolutePosition
+                            local FramePosition = ESP_SETTINGS.EspPreview.Viewport.AbsolutePosition
+                            local FrameSize = ESP_SETTINGS.EspPreview.Viewport.AbsoluteSize
 
                               Hrp2D = Vector2.new(
-                                  screenPos.X * FramePosition.X,
-                                  screenPos.Y * FramePosition.Y - 58
+                                    FramePosition.X + screenPos.X * FrameSize.X,
+                                    FramePosition.Y + screenPos.Y * FrameSize.Y
                               )
 
                           else
                               Hrp2D = Camera:WorldToViewportPoint(RootPart.Position)
                           end
 
-                          print("2DD2333132")
+                          print("2DD23331331322")
                           local CharSize = (Camera:WorldToViewportPoint(RootPart.Position - Vector3.new(0, 3, 0)).Y 
                                             - Camera:WorldToViewportPoint(RootPart.Position + Vector3.new(0, 2.6, 0)).Y) / 2 + (isPreview and 100 or 0)
 
@@ -239,7 +239,7 @@ ESP = {
 
                           local boxPosition
                           if isPreview then
-                              boxPosition = Vector2.new(math.floor(Hrp2D.X - CharSize * 1.8 / 2)+850, math.floor(Hrp2D.Y - CharSize * 1.6 / 2)+500)
+                              boxPosition = Vector2.new(math.floor(Hrp2D.X - CharSize * 1.8 / 2), math.floor(Hrp2D.Y - CharSize * 1.6 / 2))
                           else
                               boxPosition = Vector2.new(math.floor(Hrp2D.X - CharSize * 1.8 / 2), math.floor(Hrp2D.Y - CharSize * 1.6 / 2))
                           end
