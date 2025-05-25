@@ -32,6 +32,7 @@ ESP = {
         TracerPosition = "Bottom",
         EspPreview = nil,
         SetEspPreview = false,
+        UI = nil,
         Maps = {
 
         }
@@ -95,7 +96,8 @@ ESP = {
 
             local Pixel = {
                 X = nil,
-                Y = nil
+                Y = nil,
+                Onscreen = false
             }
 
             Pixel.X = (X * 0.5 + 0.5) * Viewport.AbsoluteSize.X + Viewport.AbsolutePosition.X
@@ -253,6 +255,14 @@ ESP = {
                     
                     if RootPart and Head and ShouldShow then
                         local screenPos, OnScreen = Camera:WorldToViewportPoint(RootPart.Position)  
+
+                        if isPreview and ESP_SETTINGS.UI then
+                            for _, X in ESP_SETTINGS.UI:GetChildren() do
+                                if not X.Visible and X:IsA("Frame") then
+                                    OnScreen = false
+                                end
+                            end
+                        end
 
                         if OnScreen then
                           local Hrp2D
