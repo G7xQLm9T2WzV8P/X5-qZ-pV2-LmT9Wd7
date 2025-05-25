@@ -79,6 +79,31 @@ ESP = {
             return Drawing
         end,
 
+        CharacterToViewport3D = function(Viewport, Point3D)
+            local Camera = Viewport.CurrentCamera
+            local FOV = math.rad(Camera.FieldOfView)
+            local Aspect = Viewport.AbsoluteSize.X / Viewport.AbsoluteSize.Y
+
+            local CameraInSpace = Camera.CFrame:pointToObjectSpace(Point3D)
+
+            if CameraInSpace.Z >= 0 then
+                return nil
+            end
+
+            local X = (CameraInSpace.X / -CameraInSpace.Z) / math.tan(FOV / 2) / Aspect
+            local Y = (CameraInSpace.Y / -CameraInSpace.Z) / math.tan(FOV / 2)
+
+            local Pixel = {
+                X = nil,
+                Y = nil
+            }
+
+            Pixel.X = (X * 0.5 + 0.5) * Viewport.AbsoluteSize.X + Viewport.AbsolutePosition.X
+            Pixel.Y = (-Y * 0.5 + 0.5) * Viewport.AbsoluteSize.Y + Viewport.AbsolutePosition.Y
+
+            return Vector2.new(Pixel.X, Pixel.Y)
+        end,
+
         CacheEsp = function(Player)
             local FunctionDirectory = ESP.Functions
             local SettingsDirectory = ESP.Settings
@@ -182,6 +207,7 @@ ESP = {
                 local Character = Player
                 local Team = nil
                 local isPreview = false
+                local Viewport = nil
 
                 if Player:IsA("Player") then
                     Character = Player.Character
@@ -192,6 +218,7 @@ ESP = {
 
                 if isPreview and Character then
                     Camera = ESP_SETTINGS.EspPreview.Viewport.CurrentCamera
+                    Viewport = ESP_SETTINGS.EspPreview.Viewport
                 else
                     Camera = game.Workspace.CurrentCamera
                 end
@@ -219,19 +246,12 @@ ESP = {
                         if OnScreen then
                           local Hrp2D
                           if isPreview then
-                            local FramePosition = ESP_SETTINGS.EspPreview.Viewport.AbsolutePosition
-                            local FrameSize = ESP_SETTINGS.EspPreview.Viewport.AbsoluteSize
-
-                              Hrp2D = Vector2.new(
-                                    FramePosition.X + screenPos.X * FrameSize.X,
-                                    FramePosition.Y + screenPos.Y * FrameSize.Y
-                              )
-
+                              Hrp2D = ESP.Functions.CharacterToViewport3D(Viewport, RootPart.Position)
                           else
                               Hrp2D = Camera:WorldToViewportPoint(RootPart.Position)
                           end
 
-                          print("2DD23331331322")
+                          print("nul nul")
                           local CharSize = (Camera:WorldToViewportPoint(RootPart.Position - Vector3.new(0, 3, 0)).Y 
                                             - Camera:WorldToViewportPoint(RootPart.Position + Vector3.new(0, 2.6, 0)).Y) / 2 + (isPreview and 100 or 0)
 
