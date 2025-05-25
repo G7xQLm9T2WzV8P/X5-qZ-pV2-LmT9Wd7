@@ -239,7 +239,7 @@ ESP = {
 
                           local boxPosition
                           if isPreview then
-                              boxPosition = Vector2.new(math.floor(Hrp2D.X - CharSize * 1.8 / 2)+1000, math.floor(Hrp2D.Y - CharSize * 1.6 / 2)+500)
+                              boxPosition = Vector2.new(math.floor(Hrp2D.X - CharSize * 1.8 / 2)+900, math.floor(Hrp2D.Y - CharSize * 1.6 / 2)+500)
                           else
                               boxPosition = Vector2.new(math.floor(Hrp2D.X - CharSize * 1.8 / 2), math.floor(Hrp2D.Y - CharSize * 1.6 / 2))
                           end
