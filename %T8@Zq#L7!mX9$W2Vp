@@ -457,7 +457,9 @@ ESP = {
                                     for _, bonePair in ipairs(ESP.Bones[Type]) do
                                         local parentBone, childBone = bonePair[1], bonePair[2]
                                         
-                                        if player:FindFirstChild(parentBone) or player.Character and player.Character:FindFirstChild(parentBone) and player:FindFirstChild(parentBone) or player.Character:FindFirstChild(childBone) then
+                                        if if (player:FindFirstChildOfClass("Humanoid") or player.Character:FindFirstChildOfClass("Humanoid")) and
+                                           ((player:FindFirstChildOfClass("Humanoid") and player:FindFirstChildOfClass("Humanoid").RigType == Enum.HumanoidRigType.R15) or
+                                            (player.Character:FindFirstChildOfClass("Humanoid") and player.Character:FindFirstChildOfClass("Humanoid").RigType == Enum.HumanoidRigType.R15)) then
                                             local skeletonLine = ESP.Functions.CreateDrawing("Line", {
                                                 Thickness = 1,
                                                 Color = ESP_SETTINGS.SkeletonsColor,
@@ -475,7 +477,7 @@ ESP = {
                                     if player:FindFirstChild(parentBone) or player.Character and player.Character[parentBone] and player:FindFirstChild(parentBone) or player.Character[childBone] then
                                         pcall(function()
                                         local parentPosition = camera:WorldToViewportPoint(player[parentBone].Position or player.Character[parentBone].Position)
-                                        local childPosition = camera:WorldToViewportPoint(playeR[parentBone].Position or player.Character[childBone].Position)
+                                        local childPosition = camera:WorldToViewportPoint(player[parentBone].Position or player.Character[childBone].Position)
                             
                                         skeletonLine.From = Vector2.new(parentPosition.X, parentPosition.Y)
                                         skeletonLine.To = Vector2.new(childPosition.X, childPosition.Y)
