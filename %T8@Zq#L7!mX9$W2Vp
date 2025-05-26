@@ -590,6 +590,7 @@ ESP = {
                                 esp.tracer.Visible = false
                             end
                         else
+                            pcall(function()
                             for _, drawing in pairs(esp) do
                                 if typeof(drawing) == "Instance" and drawing:IsA("Highlight") then
                                     drawing.Enabled = false
@@ -606,8 +607,10 @@ ESP = {
                                 line:Remove()
                             end
                             esp.boxLines = {}
-                        end
+                        end)
+                    end
                     else
+                        pcalL(function()
                         for _, drawing in pairs(esp) do
                             if typeof(drawing) == "Instance" and drawing:IsA("Highlight") then
                                 drawing.Enabled = false
@@ -624,8 +627,10 @@ ESP = {
                             line:Remove()
                         end
                         esp.boxLines = {}
-                    end
+                    end)
+                end
                 else
+                    pcall(function()
                     for _, drawing in pairs(esp) do
                         if typeof(drawing) == "Instance" and drawing:IsA("Highlight") then
                             drawing.Enabled = false
@@ -642,7 +647,8 @@ ESP = {
                         line:Remove()
                     end
                     esp.boxLines = {}
-                end
+                end)
+            end
             end
             setthreadidentity(oldthreadidentity)
         end,
