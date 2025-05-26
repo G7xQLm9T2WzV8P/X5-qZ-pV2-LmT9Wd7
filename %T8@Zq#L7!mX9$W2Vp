@@ -250,7 +250,7 @@ ESP = {
             local oldthreadidentity = getthreadidentity()
             setthreadidentity(8)
             local ESP_SETTINGS = ESP.Settings
-            if not ESP_SETTINGS.SetEspPreview and ESP_SETTINGS.EspPreview then
+            if not ESP_SETTINGS.SetEspPreview and ESP_SETTINGS.EspPreview ~= nil then
                 if not ESP.Cache[ESP_SETTINGS.EspPreview.Character] then
                     ESP.Functions.CacheEsp(ESP_SETTINGS.EspPreview.Character)
                     ESP_SETTINGS.SetEspPreview = true
