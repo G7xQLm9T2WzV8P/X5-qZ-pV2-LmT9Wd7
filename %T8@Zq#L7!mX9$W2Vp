@@ -651,8 +651,8 @@ ESP = {
 
 task.spawn(function()
     repeat 
-        task.wait(0.1)
-    until ESP.Settings.EspPreview and ESP.Settings.EspPreview.Character
+        task.wait(0.01)
+    until ESP.Settings.EspPreview ~= nil and ESP.Settings.EspPreview.Character
     ESP.Functions.PlayViewportAnimation()
 end)
 
