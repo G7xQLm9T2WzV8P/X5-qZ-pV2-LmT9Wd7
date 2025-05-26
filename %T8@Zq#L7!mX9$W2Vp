@@ -610,7 +610,7 @@ ESP = {
                         end)
                     end
                     else
-                        pcalL(function()
+                        pcall(function()
                         for _, drawing in pairs(esp) do
                             if typeof(drawing) == "Instance" and drawing:IsA("Highlight") then
                                 drawing.Enabled = false
