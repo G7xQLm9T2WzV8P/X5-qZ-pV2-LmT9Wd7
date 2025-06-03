@@ -108,8 +108,6 @@ ESP = {
                     X.Material = Enum.Material.Plastic
                 end
             end
-
-            return true
         end,
 
         RemoveViewportChams = function(Character)
@@ -131,34 +129,6 @@ ESP = {
             end
         end,
 
-        CleanupESP = function(esp, isPreview, Player)
-            for _, drawing in pairs(esp) do
-                if typeof(drawing) == "Instance" and drawing:IsA("Highlight") then
-                    drawing.Enabled = false
-                elseif typeof(drawing) == "Drawing" then
-                    drawing.Visible = false
-                end
-            end
-
-            for _, lineData in ipairs(esp.skeletonlines or {}) do
-                local skeletonLine = lineData[1]
-                if skeletonLine and typeof(skeletonLine) == "Drawing" then
-                    skeletonLine:Remove()
-                end
-            end
-            esp.skeletonlines = {}
-    
-            for _, line in ipairs(esp.boxLines or {}) do
-                if line and typeof(line) == "Drawing" then
-                    line:Remove()
-                end
-            end
-            esp.boxLines = {}
-
-            if isPreview then
-                ESP.Functions.RemoveViewportChams(Player)
-            end
-        end,
 
         PlayViewportAnimation = function()
             if ESP.Settings.EspPreview and ESP.Settings.EspPreview.Character then
@@ -406,9 +376,10 @@ ESP = {
                                 if not esp.highlight then
                                     if isPreview then
                                         ESP.Functions.ApplyViewportChams(Player)
+                                        esp.highlight = true
                                     else
                                         esp.highlight = Instance.new("Highlight")
-                                       esp.highlight.Parent = Character
+                                        esp.highlight.Parent = Character
                                         esp.highlight.FillTransparency = 0  
                                         esp.highlight.FillColor = Color3.fromHex("#a49ae6")
                                         esp.highlight.OutlineTransparency = 1  
@@ -686,19 +657,71 @@ ESP = {
                             end
                         else
                             pcall(function()
-                    ESP.Functions.CleanupESP(esp, isPreview, Player)
-
+                            for _, drawing in pairs(esp) do
+                                if typeof(drawing) == "Instance" and drawing:IsA("Highlight") then
+                                    drawing.Enabled = false
+                                else
+                                    drawing.Visible = false
+                                end
+                            end                                
+                            for _, lineData in ipairs(esp["skeletonlines"]) do
+                                local skeletonLine = lineData[1]
+                                skeletonLine:Remove()
+                            end
+                            if isPreview then
+                                ESP.Functions.RemoveViewportChams(Player)
+                            end
+                            esp["skeletonlines"] = {}
+                            for _, line in ipairs(esp.boxLines) do
+                                line:Remove()
+                            end
+                            esp.boxLines = {}
                         end)
                     end
                     else
                         pcall(function()
-                    ESP.Functions.CleanupESP(esp, isPreview, Player)
-
+                        for _, drawing in pairs(esp) do
+                            if typeof(drawing) == "Instance" and drawing:IsA("Highlight") then
+                                drawing.Enabled = false
+                            else
+                                drawing.Visible = false
+                            end
+                        end                                
+                        for _, lineData in ipairs(esp["skeletonlines"]) do
+                            local skeletonLine = lineData[1]
+                            skeletonLine:Remove()
+                        end
+                        if isPreview then
+                            ESP.Functions.RemoveViewportChams(Player)
+                        end
+                        esp["skeletonlines"] = {}
+                        for _, line in ipairs(esp.boxLines) do
+                            line:Remove()
+                        end
+                        esp.boxLines = {}
                     end)
                 end
                 else
                     pcall(function()
-                    ESP.Functions.CleanupESP(esp, isPreview, Player)
+                    for _, drawing in pairs(esp) do
+                        if typeof(drawing) == "Instance" and drawing:IsA("Highlight") then
+                            drawing.Enabled = false
+                        else
+                            drawing.Visible = false
+                        end
+                    end                                
+                    for _, lineData in ipairs(esp["skeletonlines"]) do
+                        local skeletonLine = lineData[1]
+                        skeletonLine:Remove()
+                    end
+                    if isPreview then
+                        ESP.Functions.RemoveViewportChams(Player)
+                    end
+                    esp["skeletonlines"] = {}
+                    for _, line in ipairs(esp.boxLines) do
+                        line:Remove()
+                    end
+                    esp.boxLines = {}
                 end)
             end
             end
