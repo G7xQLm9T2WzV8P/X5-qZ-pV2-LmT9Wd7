@@ -648,7 +648,7 @@ ESP = {
                                 else
                                     local traceroffset = isPreview and yOffset or 0
                                     esp.tracer.Visible = true
-                                    esp.tracer.From = Vector2.new(camera.ViewportSize.X / 2, tracerY)
+                                    esp.tracer.From = Vector2.new(camera.ViewportSize.X / 2, tracerY + traceroffset)
                                     esp.tracer.To = Vector2.new(hrp2D.X, hrp2D.Y + traceroffset)            
                                 end
                             else
