@@ -375,7 +375,7 @@ ESP = {
                             if ESP_SETTINGS.ShowChams and ESP_SETTINGS.Enabled then
                             if not esp.highlight then
                                 if isPreview then
-                                    ESP.Functions.ApplyViewportChams(Player) 
+                                    esp.highlight = ESP.Functions.ApplyViewportChams(Player) 
                                 else
                                     esp.highlight = Instance.new("Highlight")
                                     esp.highlight.Parent = Character
@@ -384,9 +384,11 @@ ESP = {
                                     esp.highlight.OutlineTransparency = 1  
                                 end
                             end
-                            esp.highlight.Enabled = true  
+                            if not isPreview then
+                                esp.highlight.Enabled = true  
+                            end
                         else
-                            if esp.highlight then
+                            if esp.highlight and not isPreview then
                                 esp.highlight.Enabled = false  
                             end
                         end
