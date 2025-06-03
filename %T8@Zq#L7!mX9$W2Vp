@@ -373,31 +373,33 @@ ESP = {
                             local hrp2D = Hrp2D
 
                             if ESP_SETTINGS.ShowChams and ESP_SETTINGS.Enabled then
-                            if not esp.highlight then
-                                if isPreview then
-                                    esp.highlight = ESP.Functions.ApplyViewportChams(Player) 
-                                else
-                                    esp.highlight = Instance.new("Highlight")
-                                    esp.highlight.Parent = Character
-                                    esp.highlight.FillTransparency = 0  
-                                    esp.highlight.FillColor = Color3.fromHex("#a49ae6")
-                                    esp.highlight.OutlineTransparency = 1  
+                                if not esp.highlight then
+                                    if isPreview then
+                                        ESP.Functions.ApplyViewportChams(Player)
+                                    else
+                                        esp.highlight = Instance.new("Highlight")
+                                       esp.highlight.Parent = Character
+                                        esp.highlight.FillTransparency = 0  
+                                        esp.highlight.FillColor = Color3.fromHex("#a49ae6")
+                                        esp.highlight.OutlineTransparency = 1  
+                                    end
                                 end
-                            end
-                            if not isPreview then
-                                esp.highlight.Enabled = true  
-                            else
-                                ESP.Functions.RemoveViewportChams(Player)
-                            end
-                        else
-                            if esp.highlight then
+
                                 if not isPreview then
-                                    esp.highlight.Enabled = false  
+                                    esp.highlight.Enabled = true  
                                 else
                                     ESP.Functions.RemoveViewportChams(Player)
                                 end
+                            else
+                                if esp.highlight then
+                                    if not isPreview then
+                                        esp.highlight.Enabled = false  
+                                    else
+                                        ESP.Functions.RemoveViewportChams(Player)
+                                    end
+                                end
                             end
-                        end
+
         
                             if ESP_SETTINGS.ShowName and ESP_SETTINGS.Enabled then
                                 esp.name.Visible = true
@@ -644,9 +646,10 @@ ESP = {
                                 if ESP_SETTINGS.Teamcheck and player.TeamColor == localPlayer.TeamColor then
                                     esp.tracer.Visible = false
                                 else
+                                    local traceroffset = isPreview and yOffset or 0
                                     esp.tracer.Visible = true
                                     esp.tracer.From = Vector2.new(camera.ViewportSize.X / 2, tracerY)
-                                    esp.tracer.To = Vector2.new(hrp2D.X, hrp2D.Y)            
+                                    esp.tracer.To = Vector2.new(hrp2D.X, hrp2D.Y + traceroffset)            
                                 end
                             else
                                 esp.tracer.Visible = false
