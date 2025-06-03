@@ -386,10 +386,16 @@ ESP = {
                             end
                             if not isPreview then
                                 esp.highlight.Enabled = true  
+                            else
+                                ESP.Functions.RemoveViewportChams(Player)
                             end
                         else
-                            if esp.highlight and not isPreview then
-                                esp.highlight.Enabled = false  
+                            if esp.highlight then
+                                if not isPreview then
+                                    esp.highlight.Enabled = false  
+                                else
+                                    ESP.Functions.RemoveViewportChams(Player)
+                                end
                             end
                         end
         
