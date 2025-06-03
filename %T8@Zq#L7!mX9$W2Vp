@@ -87,6 +87,7 @@ ESP = {
         end,
         
         ApplyViewportChams = function(Character)
+            SetAttribute = ESP.Functions.SetAttribute
             for _, X in Character:GetDescendants() do
                 if X:IsA("Pants") or X:IsA("Shirt") then
                     X.Parent = Character.PrimaryPart
