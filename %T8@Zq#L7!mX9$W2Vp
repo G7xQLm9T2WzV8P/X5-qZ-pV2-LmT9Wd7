@@ -80,6 +80,55 @@ ESP = {
             return Drawing
         end,
 
+        SetAttribute = function(Object, Name, Value)
+            if not Object:GetAttribute(Name) then
+                Object:SetAttribute(Name, Value)
+            end
+        end,
+        
+        ApplyViewportChams = function(Character)
+            for _, X in Character:GetDescendants() do
+                if X:IsA("Pants") or X:IsA("Shirt") then
+                    X.Parent = Character.PrimaryPart
+                elseif X:IsA("MeshPart") and not X:IsA("BasePart") or X.Parent:IsA("Accessory") and X:IsA("MeshPart") then
+                    SetAttribute(X, "OldTexture", X.TextureID)
+                    X.TextureID = ""
+                    if X.Parent:IsA("Accessory") then
+                        SetAttribute(X, "OldMColor", X.Color)
+                        X.Color = Color3.fromHex("#a49ae6")
+                    end
+                elseif X.Name == "face" then
+                    SetAttribute(X, "OldTexture", X.Texture)
+                    X.Texture = ""
+                elseif X:IsA("BasePart") then
+                    SetAttribute(X, "OldColor", X.Color)
+                    SetAttribute(X, "OldMaterial", X.Material)
+                    X.Color = Color3.fromHex("#a49ae6")
+                    X.Material = Enum.Material.Plastic
+                end
+            end
+        end,
+
+        RemoveViewportChams = function(Character)
+            for _, X in Character:GetDescendants() do
+                if X:GetAttribute("OldTexture") then
+                    if X.Name == "face" then
+                        X.Texture = X:GetAttribute("OldTexture")
+                    else
+                        X.TextureID = X:GetAttribute("OldTexture")
+                    end
+                elseif X:GetAttribute("OldColor") or X:GetAttribute("OldMaterial") then
+                    X.Color = X:GetAttribute("OldColor")
+                    X.Material = X:GetAttribute("OldMaterial")
+                elseif X:IsA("Pants") or X:IsA("Shirt") then
+                    X.Parent = Character
+                elseif X:GetAttribute("OldMColor") then
+                    X.Color = X:GetAttribute("OldMColor")
+                end
+            end
+        end,
+
+
         PlayViewportAnimation = function()
             if ESP.Settings.EspPreview and ESP.Settings.EspPreview.Character then
                 if ESP.Settings.PlayingAnimations then return end
@@ -324,11 +373,15 @@ ESP = {
 
                             if ESP_SETTINGS.ShowChams and ESP_SETTINGS.Enabled then
                             if not esp.highlight then
-                                esp.highlight = Instance.new("Highlight")
-                                esp.highlight.Parent = Character
-                                esp.highlight.FillTransparency = 0  
-                                esp.highlight.FillColor = Color3.fromHex("#a49ae6")
-                                esp.highlight.OutlineTransparency = 1  
+                                if isPreview then
+                                    ESP.Functions.ApplyViewportChams(Player) 
+                                else
+                                    esp.highlight = Instance.new("Highlight")
+                                    esp.highlight.Parent = Character
+                                    esp.highlight.FillTransparency = 0  
+                                    esp.highlight.FillColor = Color3.fromHex("#a49ae6")
+                                    esp.highlight.OutlineTransparency = 1  
+                                end
                             end
                             esp.highlight.Enabled = true  
                         else
@@ -339,7 +392,7 @@ ESP = {
         
                             if ESP_SETTINGS.ShowName and ESP_SETTINGS.Enabled then
                                 esp.name.Visible = true
-                                esp.name.Text = string.lower(player.Name)
+                                esp.name.Text = isPreview and "Insomnia" or player.Name
                                 esp.name.Position = Vector2.new(boxSize.X / 2 + boxPosition.X, boxPosition.Y - 16)
                                 esp.name.Color = ESP_SETTINGS.NameColor
                             else
@@ -480,8 +533,8 @@ ESP = {
                             local nextY = boxPosition.Y + boxSize.Y + 5
 
                             if ESP_SETTINGS.ShowDistance and ESP_SETTINGS.Enabled then
-                                local distance = (camera.CFrame.p - rootPart.Position).Magnitude
-                                esp.distance.Text = string.format("%.1f s", math.floor(distance))
+                                local distance = (camera.CFrame.p - rootPart.Position).Magnitude    
+                                esp.distance.Text = math.floor(distance) .. "s"
                                 esp.distance.Position = Vector2.new(boxPosition.X + boxSize.X / 2, nextY)
                                 esp.distance.Visible = true
                                 nextY = nextY + 15 
@@ -602,6 +655,9 @@ ESP = {
                                 local skeletonLine = lineData[1]
                                 skeletonLine:Remove()
                             end
+                            if isPreview then
+                                ESP.Functions.RemoveViewportChams(Player)
+                            end
                             esp["skeletonlines"] = {}
                             for _, line in ipairs(esp.boxLines) do
                                 line:Remove()
@@ -621,6 +677,9 @@ ESP = {
                         for _, lineData in ipairs(esp["skeletonlines"]) do
                             local skeletonLine = lineData[1]
                             skeletonLine:Remove()
+                        end
+                        if isPreview then
+                            ESP.Functions.RemoveViewportChams(Player)
                         end
                         esp["skeletonlines"] = {}
                         for _, line in ipairs(esp.boxLines) do
@@ -642,6 +701,9 @@ ESP = {
                         local skeletonLine = lineData[1]
                         skeletonLine:Remove()
                     end
+                    if isPreview then
+                        ESP.Functions.RemoveViewportChams(Player)
+                    end
                     esp["skeletonlines"] = {}
                     for _, line in ipairs(esp.boxLines) do
                         line:Remove()
@@ -658,8 +720,7 @@ ESP = {
 task.spawn(function()
     repeat 
         task.wait(0.01)
-    until ESP.Settings.EspPreview ~= nil and ESP.Settings.EspPreview.Character
-    task.wait(.01)
+    until ESP.Settings.EspPreview ~= nil and ESP.Settings.EspPreview.Character ~= nil and ESP.Settings.EspPreview.Character:FindFirstChildOfClass("Humanoid")
     ESP.Functions.PlayViewportAnimation()
 end)
 
