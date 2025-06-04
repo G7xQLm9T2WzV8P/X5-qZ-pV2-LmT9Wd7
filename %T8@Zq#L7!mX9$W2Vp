@@ -372,33 +372,34 @@ ESP = {
 
                             local hrp2D = Hrp2D
 
-if ESP_SETTINGS.ShowChams and ESP_SETTINGS.Enabled then
-    if not esp.highlight then
-        if isPreview then
-            -- Apply viewport chams once
-            ESP.Functions.ApplyViewportChams(Player)
-            esp.highlight = "viewport" -- any non-nil value to indicate it was applied
-        else
-            esp.highlight = Instance.new("Highlight")
-            esp.highlight.Parent = Character
-            esp.highlight.FillTransparency = 0  
-            esp.highlight.FillColor = Color3.fromHex("#a49ae6")
-            esp.highlight.OutlineTransparency = 1  
-        end
-    end
-
-    if not isPreview and typeof(esp.highlight) == "Instance" and esp.highlight:IsA("Highlight") then
-        esp.highlight.Enabled = true  
-    end
-else
-    if esp.highlight then
-        if isPreview then
-            ESP.Functions.RemoveViewportChams(Player)
-        elseif typeof(esp.highlight) == "Instance" and esp.highlight:IsA("Highlight") then
-            esp.highlight.Enabled = false  
-        end
-    end
-end
+                            if ESP_SETTINGS.ShowChams and ESP_SETTINGS.Enabled then
+                                if isPreview then
+                                    if not esp.viewportChams then
+                                        ESP.Functions.ApplyViewportChams(Player)
+                                        esp.viewportChams = true
+                                    end
+                                else
+                                    if not esp.highlight then
+                                        esp.highlight = Instance.new("Highlight")
+                                        esp.highlight.Parent = Character
+                                        esp.highlight.FillTransparency = 0
+                                        esp.highlight.FillColor = Color3.fromHex("#a49ae6")
+                                        esp.highlight.OutlineTransparency = 1
+                                    end
+                                    esp.highlight.Enabled = true
+                                end
+                            else
+                                if isPreview then
+                                    if esp.viewportChams then
+                                        ESP.Functions.RemoveViewportChams(Player)
+                                        esp.viewportChams = nil
+                                    end
+                                else
+                                    if esp.highlight then
+                                        esp.highlight.Enabled = false
+                                    end
+                                end
+                            end
 
 
         
