@@ -200,7 +200,7 @@ function chrono:Window(windowProperty)
 	local sounds = utilities.sounds
 	sounds.Studio = RunService:IsStudio()
 	sounds.addSound("hover", "rbxassetid://119354387183704")
-	sounds.addSound("select", "rbxassetid://111174530730534")
+	sounds.addSound("select", "rbxassetid://98585875176475")
 
 	-- Mouse Position
 
