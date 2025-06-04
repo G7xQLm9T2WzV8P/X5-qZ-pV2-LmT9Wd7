@@ -334,7 +334,7 @@ ESP = {
                 local player = Player
 
 
-                    if Character and (not ESP.Settings.Teamcheck or (Team and Team ~= Client.Team)) and (isPreview and (ESP_SETTINGS.UI ~= nil and not ESP_SETTINGS.UI:IsActive())  or not isPreview) then
+                    if Character and (not ESP.Settings.Teamcheck or (Team and Team ~= Client.Team)) and (isPreview and (ESP_SETTINGS.UI ~= nil and ESP_SETTINGS.UI:IsActive())  or not isPreview) then
                     local RootPart = Character:FindFirstChild("UpperTorso") or Character:FindFirstChild("Torso") or Character:FindFirstChild("HumanoidRootPart") or Character:FindFirstChild("Body") or Character.PrimaryPart
                     local Head = Character:FindFirstChild("MouthPart") or Character:FindFirstChild("Body") or Character:FindFirstChild("Head") or Character:FindFirstChild("Eyes") or Character:FindFirstChild("Jaw") or Character:FindFirstChild("FakeHead") or Character.PrimaryPart
                     local Humanoid = Character:FindFirstChild("Humanoid")
