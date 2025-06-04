@@ -635,23 +635,23 @@ ESP = {
                                 end
                                 esp["skeletonlines"] = {}
                             end                                            
-        
                             if ESP_SETTINGS.ShowTracer and ESP_SETTINGS.Enabled then
                                 local tracerY
                                 if ESP_SETTINGS.TracerPosition == "Top" then
-                                    tracerY = 0
+                                    tracerY = isPreview and 0 or camera.ViewportSize.Y * 0
                                 elseif ESP_SETTINGS.TracerPosition == "Middle" then
-                                    tracerY = camera.ViewportSize.Y / 2
+                                    tracerY = isPreview and (Viewport.AbsoluteSize.Y / 2) or (camera.ViewportSize.Y / 2)
                                 else
-                                    tracerY = camera.ViewportSize.Y
+                                    tracerY = isPreview and Viewport.AbsoluteSize.Y or camera.ViewportSize.Y
                                 end
+
                                 if ESP_SETTINGS.Teamcheck and player.TeamColor == localPlayer.TeamColor then
                                     esp.tracer.Visible = false
                                 else
-                                    local traceroffset = isPreview and yOffset or 0
                                     esp.tracer.Visible = true
-                                    esp.tracer.From = Vector2.new(camera.ViewportSize.X / 2, tracerY + traceroffset)
-                                    esp.tracer.To = Vector2.new(hrp2D.X, hrp2D.Y + traceroffset)            
+                                    local centerX = isPreview and (Viewport.AbsoluteSize.X / 2) or (camera.ViewportSize.X / 2)
+                                    esp.tracer.From = Vector2.new(centerX, tracerY)
+                                    esp.tracer.To = Vector2.new(hrp2D.X, hrp2D.Y + (isPreview and yOffset or 0))
                                 end
                             else
                                 esp.tracer.Visible = false
