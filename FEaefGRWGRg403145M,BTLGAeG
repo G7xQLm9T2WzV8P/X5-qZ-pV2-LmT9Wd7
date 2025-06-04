@@ -1,5 +1,3 @@
--- this bhop script has been made by pdnghiaqoi, i did NOT make ts nor steal it, its free on the toolbox (im not wasting my time doing a movement thing like this, plus i hate movement scripts they confuse my monkey brain)
-
 
 local player
 local character
@@ -371,7 +369,7 @@ function BHop:Stop()
    remove()
 end
 function BHop:ChangeMaxSpeed(Speed)
-	airMaxSpeed = speed
+	airMaxSpeed = Speed
 end
 function BHop:ChangeAceleration(Acceleration)
 	airAccelerate = Acceleration
