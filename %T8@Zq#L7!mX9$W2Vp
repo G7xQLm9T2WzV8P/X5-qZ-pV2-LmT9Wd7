@@ -347,7 +347,7 @@ ESP = {
 
                     
                     if RootPart and Head and (isPreview and ESP_SETTINGS.ShowPreview) or not isPreview then
-                        local screenPos, OnScreen = Camera:WorldToViewportPoint(RootPart.Position)  
+                        local screenPos, OnScreen = Camera:WorldToViewportPoint(RootPart and RootPart.Position)  
 
                         if OnScreen then
                           local Hrp2D
@@ -546,8 +546,14 @@ ESP = {
                             local nextY = boxPosition.Y + boxSize.Y + 5
 
                             if ESP_SETTINGS.ShowDistance and ESP_SETTINGS.Enabled then
-                                local distance = (camera.CFrame.p - rootPart.Position).Magnitude    
-                                esp.distance.Text = math.floor(distance) .. "s"
+                                local distance = math.floor((camera.CFrame.p - rootPart.Position).Magnitude)
+                                if distance <= 15 then
+                                    distance = "Nearby"
+                                else
+                                    distance = distance .. "s"
+                                end
+
+                                esp.distance.Text = distance
                                 esp.distance.Position = Vector2.new(boxPosition.X + boxSize.X / 2, nextY)
                                 esp.distance.Visible = true
                                 nextY = nextY + 15 
