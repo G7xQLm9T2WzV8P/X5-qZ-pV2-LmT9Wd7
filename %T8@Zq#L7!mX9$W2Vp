@@ -660,7 +660,7 @@ ESP = {
                             for _, drawing in pairs(esp) do
                                 if typeof(drawing) == "Instance" and drawing:IsA("Highlight") then
                                     drawing.Enabled = false
-                                else
+                                elseif typeof(drawing) ~= "Boolean" then
                                     drawing.Visible = false
                                 end
                             end                                
@@ -681,7 +681,7 @@ ESP = {
                         for _, drawing in pairs(esp) do
                             if typeof(drawing) == "Instance" and drawing:IsA("Highlight") then
                                 drawing.Enabled = false
-                            else
+                            elseif typeof(drawing) ~= "Boolean" then
                                 drawing.Visible = false
                             end
                         end                                
@@ -702,7 +702,7 @@ ESP = {
                     for _, drawing in pairs(esp) do
                         if typeof(drawing) == "Instance" and drawing:IsA("Highlight") then
                             drawing.Enabled = false
-                        else
+                        elseif typeof(drawing) ~= "Boolean" then
                             drawing.Visible = false
                         end
                     end                                
