@@ -32,6 +32,7 @@ ESP = {
         TracerPosition = "Bottom",
         EspPreview = nil,
         SetEspPreview = false,
+        ShowPreview = true,
         UI = nil,
         Maps = {
 
@@ -339,14 +340,13 @@ ESP = {
                     local Head = Character:FindFirstChild("MouthPart") or Character:FindFirstChild("Body") or Character:FindFirstChild("Head") or Character:FindFirstChild("Eyes") or Character:FindFirstChild("Jaw") or Character:FindFirstChild("FakeHead") or Character.PrimaryPart
                     local Humanoid = Character:FindFirstChild("Humanoid")
                     --local IsBehindWall = ESP.Settings.WallCheck and ESP.Functions.IsPlayerBehindWall(Player)
-                    local ShouldShow = true
 
 
                     local rootPart = RootPart
 
 
                     
-                    if RootPart and Head and ShouldShow then
+                    if RootPart and Head and (isPreview and ESP_SETTINGS.ShowPreview) or not isPreview then
                         local screenPos, OnScreen = Camera:WorldToViewportPoint(RootPart.Position)  
 
                         if OnScreen then
