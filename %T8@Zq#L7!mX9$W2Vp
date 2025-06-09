@@ -213,6 +213,7 @@ ESP = {
         end,
 
         CacheEsp = function(Player)
+            if not ESP.Cache then return end
             local FunctionDirectory = ESP.Functions
             local SettingsDirectory = ESP.Settings
  
@@ -349,13 +350,6 @@ ESP = {
                 local localPlayer = Client
                 local player = Player
 
-
-                    if Character and (not ESP.Settings.Teamcheck or (Team and Team ~= Client.Team)) and (isPreview and (ESP_SETTINGS.UI ~= nil and ESP_SETTINGS.UI:IsActive())  or not isPreview) then
-                    local RootPart = Character:FindFirstChild("UpperTorso") or Character:FindFirstChild("Torso") or Character:FindFirstChild("HumanoidRootPart") or Character:FindFirstChild("Body") or Character.PrimaryPart
-                    local Head = Character:FindFirstChild("MouthPart") or Character:FindFirstChild("Body") or Character:FindFirstChild("Head") or Character:FindFirstChild("Eyes") or Character:FindFirstChild("Jaw") or Character:FindFirstChild("FakeHead") or Character.PrimaryPart
-                    local Humanoid = Character:FindFirstChild("Humanoid")
-                    --local IsBehindWall = ESP.Settings.WallCheck and ESP.Functions.IsPlayerBehindWall(Player)
-
                     local boxcolor
                     local rootPart = RootPart
                     local ismonster = ESP.Functions.IsPlayerMonster(Player)
@@ -365,6 +359,14 @@ ESP = {
                     else
                         boxcolor = ESP_SETTINGS.BoxColor
                     end
+
+
+                    if Character and (not ESP.Settings.Teamcheck or (Team and Team ~= Client.Team)) and (isPreview and (ESP_SETTINGS.UI ~= nil and ESP_SETTINGS.UI:IsActive())  or not isPreview) and (ismonster and ESP_SETTINGS.MonsterEspEnabled or not ismonster) then
+                    local RootPart = Character:FindFirstChild("UpperTorso") or Character:FindFirstChild("Torso") or Character:FindFirstChild("HumanoidRootPart") or Character:FindFirstChild("Body") or Character.PrimaryPart
+                    local Head = Character:FindFirstChild("MouthPart") or Character:FindFirstChild("Body") or Character:FindFirstChild("Head") or Character:FindFirstChild("Eyes") or Character:FindFirstChild("Jaw") or Character:FindFirstChild("FakeHead") or Character.PrimaryPart
+                    local Humanoid = Character:FindFirstChild("Humanoid")
+                    --local IsBehindWall = ESP.Settings.WallCheck and ESP.Functions.IsPlayerBehindWall(Player)
+
 
                     
                     if RootPart and Head and ((isPreview and ESP_SETTINGS.ShowPreview) or not isPreview) then
