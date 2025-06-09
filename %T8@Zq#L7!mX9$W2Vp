@@ -354,11 +354,16 @@ ESP = {
                     local Humanoid = Character:FindFirstChild("Humanoid")
                     --local IsBehindWall = ESP.Settings.WallCheck and ESP.Functions.IsPlayerBehindWall(Player)
 
-
+                    print(Player.Name)
+                    local boxcolor
                     local rootPart = RootPart
                     local ismonster = ESP.Functions.IsPlayerMonster(Player)
                     local domonsteresp = ESP_SETTINGS.MonsterEspEnabled and ismonster
-                    local boxcolor = (not domonsteresp and ESP_SETTINGS.BoxColor) or (domonsteresp and Color3.fromRGB(245,0,0))
+                    if domonsteresp then
+                        boxcolor = Color3.fromRGB(245, 0, 0)
+                    else
+                        boxcolor = ESP_SETTINGS.BoxColor
+                    end
 
                     
                     if RootPart and Head and ((isPreview and ESP_SETTINGS.ShowPreview) or not isPreview) then
