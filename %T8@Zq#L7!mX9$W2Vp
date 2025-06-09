@@ -354,7 +354,7 @@ ESP = {
                     local Humanoid = Character:FindFirstChild("Humanoid")
                     --local IsBehindWall = ESP.Settings.WallCheck and ESP.Functions.IsPlayerBehindWall(Player)
 
-                    print(Player.Name)
+                    print(Player and Player.Name or "NoPlayer")
                     local boxcolor
                     local rootPart = RootPart
                     local ismonster = ESP.Functions.IsPlayerMonster(Player)
