@@ -83,7 +83,7 @@ ESP = {
         end,
 
         IsPlayerMonster = function(Player)
-            local Character = Player.Character or Player
+            local Character = Player:IsA("Player") and Player.Character or Player
             if Character then
                 local Humanoid = Character:FindFirstChildOfClass("Humanoid")
                 if Humanoid and Humanoid.Name == "Monster" or Character.Name == "Rake" then
