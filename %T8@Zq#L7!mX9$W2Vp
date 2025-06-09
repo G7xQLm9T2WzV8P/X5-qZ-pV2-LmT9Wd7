@@ -330,7 +330,9 @@ ESP = {
                 if Player:IsA("Player") then
                     Character = Player.Character
                     Team = Player.Team
-                else    
+                elseif ESP.Functions.IsPlayerMonster(Player) then    
+                    -- / idk
+                else
                     isPreview = true
                 end
 
