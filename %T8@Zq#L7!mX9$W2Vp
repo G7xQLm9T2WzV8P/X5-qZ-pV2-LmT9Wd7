@@ -369,7 +369,7 @@ ESP = {
 
 
                     
-                    if RootPart and Head and ((isPreview and ESP_SETTINGS.ShowPreview) or not isPreview) then
+                    if RootPart and Head and ((isPreview and ESP_SETTINGS.ShowPreview) or not isPreview) and Camera then
                         local screenPos, OnScreen = Camera:WorldToViewportPoint(RootPart and RootPart.Position)  
 
                         if OnScreen then
