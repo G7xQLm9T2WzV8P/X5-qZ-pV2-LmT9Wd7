@@ -33,6 +33,7 @@ ESP = {
         EspPreview = nil,
         SetEspPreview = false,
         ShowPreview = true,
+        MonsterEspEnabled = false,
         UI = nil,
         Maps = {
 
@@ -79,6 +80,18 @@ ESP = {
             end
 
             return Drawing
+        end,
+
+        IsPlayerMonster = function(Player)
+            local Character = Player.Character or Player
+            if Character then
+                local Humanoid = Character:FindFirstChildOfClass("Humanoid")
+                if Humanoid and Humanoid.Name == "Monster" or Character.Name == "Rake" then
+                    return true
+                end
+            end
+
+            return false
         end,
 
         SetAttribute = function(Object, Name, Value)
@@ -343,7 +356,9 @@ ESP = {
 
 
                     local rootPart = RootPart
-
+                    local ismonster = ESP.Functions.IsPlayerMonster(Player)
+                    local domonsteresp = ESP_SETTINGS.MonsterEspEnabled and ismonster
+                    local boxcolor = (not domonsteresp and ESP_SETTINGS.BoxColor) or (domonsteresp and Color3.fromRGB(245,0,0))
 
                     
                     if RootPart and Head and ((isPreview and ESP_SETTINGS.ShowPreview) or not isPreview) then
@@ -418,7 +433,7 @@ ESP = {
                                     esp.boxOutline.Position = boxPosition
                                     esp.box.Size = boxSize
                                     esp.box.Position = boxPosition
-                                    esp.box.Color = ESP_SETTINGS.BoxColor
+                                    esp.box.Color = boxcolor
                                     esp.box.Visible = true
                                     esp.boxOutline.Visible = true
                                     for _, line in ipairs(esp.boxLines) do
