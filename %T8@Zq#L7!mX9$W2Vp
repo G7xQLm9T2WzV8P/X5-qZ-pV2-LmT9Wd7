@@ -213,69 +213,70 @@ ESP = {
         end,
 
         CacheEsp = function(Player)
-            if not ESP.Cache then return end
-            local FunctionDirectory = ESP.Functions
-            local SettingsDirectory = ESP.Settings
- 
-            
-            local Main = {
-                tracer = FunctionDirectory.CreateDrawing("Line", {
-                    Thickness = SettingsDirectory.TracerThickness,
-                    Color = SettingsDirectory.TracerColor,
-                    Transparency = 0.5  
-                }),
+            pcall(function()
+                local FunctionDirectory = ESP.Functions
+                local SettingsDirectory = ESP.Settings
+    
+                
+                local Main = {
+                    tracer = FunctionDirectory.CreateDrawing("Line", {
+                        Thickness = SettingsDirectory.TracerThickness,
+                        Color = SettingsDirectory.TracerColor,
+                        Transparency = 0.5  
+                    }),
 
-                boxOutline = FunctionDirectory.CreateDrawing("Square", {
-                    Color = SettingsDirectory.BoxOutlineColor,
-                    Thickness = 3,
-                    Filled = false
-                }),
+                    boxOutline = FunctionDirectory.CreateDrawing("Square", {
+                        Color = SettingsDirectory.BoxOutlineColor,
+                        Thickness = 3,
+                        Filled = false
+                    }),
 
-                box = FunctionDirectory.CreateDrawing("Square", {
-                    Color = SettingsDirectory.BoxColor,
-                    Thickness = 1,
-                    Filled = false                    
-                }),
+                    box = FunctionDirectory.CreateDrawing("Square", {
+                        Color = SettingsDirectory.BoxColor,
+                        Thickness = 1,
+                        Filled = false                    
+                    }),
 
-                name = FunctionDirectory.CreateDrawing("Text", {
-                    Color = SettingsDirectory.NameColor,
-                    Outline = true,
-                    Center = true,
-                    Size = 13.5,
-                    Font = Drawing.Fonts.Monospace
-                }),
+                    name = FunctionDirectory.CreateDrawing("Text", {
+                        Color = SettingsDirectory.NameColor,
+                        Outline = true,
+                        Center = true,
+                        Size = 13.5,
+                        Font = Drawing.Fonts.Monospace
+                    }),
 
-                healthOutline = FunctionDirectory.CreateDrawing("Line", {
-                    Thickness = 3,
-                    Color = SettingsDirectory.HealthOutlineColor
-                }),
+                    healthOutline = FunctionDirectory.CreateDrawing("Line", {
+                        Thickness = 3,
+                        Color = SettingsDirectory.HealthOutlineColor
+                    }),
 
-                health = FunctionDirectory.CreateDrawing("Line", {
-                    Thickness = 2
-                }),
+                    health = FunctionDirectory.CreateDrawing("Line", {
+                        Thickness = 2
+                    }),
 
-                distance = FunctionDirectory.CreateDrawing("Text", {
-                    Color = Color3.new(1, 1, 1),
-                    Size = 13.5,
-                    Outline = true,
-                    Center = true,
-                    Font = Drawing.Fonts.Monospace
-                }),
+                    distance = FunctionDirectory.CreateDrawing("Text", {
+                        Color = Color3.new(1, 1, 1),
+                        Size = 13.5,
+                        Outline = true,
+                        Center = true,
+                        Font = Drawing.Fonts.Monospace
+                    }),
 
-                tool = FunctionDirectory.CreateDrawing("Text", {
-                    Color = Color3.new(1, 1, 1),
-                    Size = 13.5,
-                    Outline = true,
-                    Center = true,
-                    Font = Drawing.Fonts.Monospace
-                }),
+                    tool = FunctionDirectory.CreateDrawing("Text", {
+                        Color = Color3.new(1, 1, 1),
+                        Size = 13.5,
+                        Outline = true,
+                        Center = true,
+                        Font = Drawing.Fonts.Monospace
+                    }),
 
-                boxLines = {}
-            }
+                    boxLines = {}
+                }
 
-            
-            ESP.Cache[Player] = Main
-            ESP.Cache[Player]["skeletonlines"] = {}
+                
+                ESP.Cache[Player] = Main
+                ESP.Cache[Player]["skeletonlines"] = {}
+           end)
         end,
 
         RemoveEsp = function(Player)
@@ -771,7 +772,6 @@ for _, obj in ipairs(Workspace:GetChildren()) do
     if obj:IsA("Model") then
         local humanoid = obj:FindFirstChildOfClass("Humanoid")
         if obj.Name == "Rake" or (humanoid and humanoid.Name == "Monster") then
-            print("cached rake")
             ESP.Functions.CacheEsp(obj)
         end
     end
@@ -781,7 +781,6 @@ Workspace.ChildAdded:Connect(function(obj)
     if obj ~= Client.Character and obj:IsA("Model") then
         local humanoid = obj:FindFirstChildOfClass("Humanoid")
         if obj.Name == "Rake" or (humanoid and humanoid.Name == "Monster") then
-            print("cached rake")
             ESP.Functions.CacheEsp(obj)
         end
     end
