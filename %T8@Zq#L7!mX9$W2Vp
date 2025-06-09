@@ -354,7 +354,6 @@ ESP = {
                     local Humanoid = Character:FindFirstChild("Humanoid")
                     --local IsBehindWall = ESP.Settings.WallCheck and ESP.Functions.IsPlayerBehindWall(Player)
 
-                    print(Player and Player.Name or "NoPlayer")
                     local boxcolor
                     local rootPart = RootPart
                     local ismonster = ESP.Functions.IsPlayerMonster(Player)
@@ -768,6 +767,7 @@ for _, obj in ipairs(Workspace:GetChildren()) do
     if obj:IsA("Model") then
         local humanoid = obj:FindFirstChildOfClass("Humanoid")
         if obj.Name == "Rake" or (humanoid and humanoid.Name == "Monster") then
+            print("cached rake")
             ESP.Functions.CacheEsp(obj)
         end
     end
@@ -777,6 +777,7 @@ Workspace.ChildAdded:Connect(function(obj)
     if obj ~= Client.Character and obj:IsA("Model") then
         local humanoid = obj:FindFirstChildOfClass("Humanoid")
         if obj.Name == "Rake" or (humanoid and humanoid.Name == "Monster") then
+            print("cached rake")
             ESP.Functions.CacheEsp(obj)
         end
     end
