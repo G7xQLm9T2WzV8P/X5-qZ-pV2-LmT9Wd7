@@ -634,37 +634,35 @@ ESP = {
                                     local parentBone, childBone = lineData[2], lineData[3]
 
                                     if Character and Character:FindFirstChild(parentBone) and Character:FindFirstChild(childBone) then
-                                        pcall(function()
-                                            local parentPosition, childPosition
-                
-                                            if isPreview then
-                                                parentPosition = ESP.Functions.CharacterToViewport3D(
-                                                    Viewport,
-                                                    Character[parentBone].Position
-                                                )
-                                                childPosition = ESP.Functions.CharacterToViewport3D(
-                                                    Viewport,
-                                                    Character[childBone].Position
-                                                )
-                                            else
-                                                parentPosition = camera:WorldToViewportPoint(Character[parentBone].Position)
-                                                childPosition = camera:WorldToViewportPoint(Character[childBone].Position)
-                                            end
+                                        local parentPosition, childPosition
+            
+                                        if isPreview then
+                                            parentPosition = ESP.Functions.CharacterToViewport3D(
+                                                Viewport,
+                                                Character[parentBone].Position
+                                            )
+                                            childPosition = ESP.Functions.CharacterToViewport3D(
+                                                Viewport,
+                                                Character[childBone].Position
+                                            )
+                                        else
+                                            parentPosition = camera:WorldToViewportPoint(Character[parentBone].Position)
+                                            childPosition = camera:WorldToViewportPoint(Character[childBone].Position)
+                                        end
 
-                                            local yOffset = 0
-                                            if isPreview then
-                                                yOffset = 58
-                                            end
+                                        local yOffset = 0
+                                        if isPreview then
+                                            yOffset = 58
+                                        end
 
-                                            if parentPosition and childPosition then
-                                                skeletonLine.From = Vector2.new(parentPosition.X, parentPosition.Y + yOffset)
-                                                skeletonLine.To = Vector2.new(childPosition.X, childPosition.Y + yOffset)
-                                                skeletonLine.Color = ESP_SETTINGS.SkeletonsColor
-                                                skeletonLine.Visible = true
-                                            else
-                                                skeletonLine.Visible = false
-                                            end
-                                        end)
+                                        if parentPosition and childPosition then
+                                            skeletonLine.From = Vector2.new(parentPosition.X, parentPosition.Y + yOffset)
+                                            skeletonLine.To = Vector2.new(childPosition.X, childPosition.Y + yOffset)
+                                            skeletonLine.Color = ESP_SETTINGS.SkeletonsColor
+                                            skeletonLine.Visible = true
+                                        else
+                                            skeletonLine.Visible = false
+                                        end
                                     else
                                         skeletonLine:Remove()
                                         esp["skeletonlines"][_] = nil
