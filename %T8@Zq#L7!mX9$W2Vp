@@ -578,7 +578,7 @@ ESP = {
                                     if ESP_SETTINGS.isPreviewDistance > 50 then
                                         ESP_SETTINGS.isPreviewDistance = 0
                                     end
-                                    distance = ESP_SETTINGS.isPreviewDistance
+                                    distance = math.floor(ESP_SETTINGS.isPreviewDistance)
                                 else
                                     distance = math.floor((Camera.CFrame.Position - RootPart.Position).Magnitude)
                                 end
