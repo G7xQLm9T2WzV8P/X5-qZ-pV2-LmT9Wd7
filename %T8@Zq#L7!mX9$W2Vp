@@ -570,7 +570,7 @@ ESP = {
                             local nextY = boxPosition.Y + boxSize.Y + 5
 
                             if ESP_SETTINGS.ShowDistance and ESP_SETTINGS.Enabled then
-                                local distance = math.floor((camera.CFrame.p - rootPart.Position).Magnitude)
+                                local distance = math.floor((camera.Position - RootPart.Position).Magnitude)
                                 if distance <= 15 then
                                     distance = "Nearby"
                                 else
