@@ -35,6 +35,7 @@ ESP = {
         ShowPreview = true,
         MonsterEspEnabled = false,
         UI = nil,
+        isPreviewDistance = 0
         Maps = {
 
         }
@@ -570,7 +571,18 @@ ESP = {
                             local nextY = boxPosition.Y + boxSize.Y + 5
 
                             if ESP_SETTINGS.ShowDistance and ESP_SETTINGS.Enabled then
-                                local distance = math.floor((camera.Position - RootPart.Position).Magnitude)
+                                local distance = 10
+                                ESP_SETTINGS.isPreviewDistance = ESP_SETTINGS.isPreviewDistance + 0.1
+                                if ESP_SETTINGS.isPreviewDistance > 50 then
+                                    ESP_SETTINGS.isPreviewDistance = 0
+                                end
+
+
+                                if isPreview then
+                                    distance = ESP_SETTINGS.isPreviewDistance
+                                else
+                                    distance = math.floor((camera.Position - RootPart.Position).Magnitude)
+                                end
                                 if distance <= 15 then
                                     distance = "Nearby"
                                 else
