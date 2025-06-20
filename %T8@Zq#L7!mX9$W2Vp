@@ -575,12 +575,12 @@ ESP = {
                                 local distance = 10
 
                                 if isPreview then
-                                    ESP_SETTINGS.isPreviewDistance = (ESP_SETTINGS.isPreviewDistance or 0) + (ESP_SETTINGS.isPreviewDistanceDecreasing and -.2 or .2)
                                     if ESP_SETTINGS.isPreviewDistance > 50 then
                                         ESP_SETTINGS.isPreviewDistanceDecreasing = true
                                     elseif ESP_SETTINGS.isPreviewDistance <= 0 then
                                         ESP_SETTINGS.isPreviewDistanceDecreasing = false
                                     end
+                                    ESP_SETTINGS.isPreviewDistance = (ESP_SETTINGS.isPreviewDistance or 0) + (ESP_SETTINGS.isPreviewDistanceDecreasing and -.5 or .5)
 
                                     distance = math.floor(ESP_SETTINGS.isPreviewDistance)
                                 else
