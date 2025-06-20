@@ -589,6 +589,8 @@ ESP = {
 
                                 if distance <= 15 then
                                     distance = "Nearby"
+                                elseif distance <= 1 then
+                                    distance = "Here"
                                 else
                                     distance = distance .. "s"
                                 end
