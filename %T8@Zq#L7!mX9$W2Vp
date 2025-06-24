@@ -359,6 +359,7 @@ ESP = {
             end
 
             for Player, Esp in pairs(ESP.Cache) do
+                print(Player and Player:FindFirstAncestorOfClass("Folder") == nil)
                 local Character = Player
                 local Team = nil
                 local isPreview = false
