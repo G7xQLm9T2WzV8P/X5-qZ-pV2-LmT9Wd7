@@ -39,7 +39,13 @@ ESP = {
         isPreviewDistanceDecreasing = true,
         Maps = {
 
-        }
+        },
+
+        Attributes = {},
+
+        NPCfolder_Enemy = nil,
+        NPCfolder_Ally = nil,
+        NPCfolder_Neutral = nil
     },
 
     Cache = {},
@@ -214,7 +220,7 @@ ESP = {
             return Vector2.new(Pixel.X, Pixel.Y)
         end,
 
-        CacheEsp = function(Player)
+        CacheEsp = function(Player, Attribute)
             pcall(function()
                 local FunctionDirectory = ESP.Functions
                 local SettingsDirectory = ESP.Settings
@@ -275,7 +281,9 @@ ESP = {
                     boxLines = {}
                 }
 
-                
+                if Attribute then
+                    ESP.Attributes[Player] = Attribute
+                end
                 ESP.Cache[Player] = Main
                 ESP.Cache[Player]["skeletonlines"] = {}
            end)
@@ -322,6 +330,30 @@ ESP = {
                 if not ESP.Cache[ESP_SETTINGS.EspPreview.Character] then
                     ESP.Functions.CacheEsp(ESP_SETTINGS.EspPreview.Character)
                     ESP_SETTINGS.SetEspPreview = true
+                end
+            end
+
+            if ESP_SETTINGS.NPCfolder_Ally then
+                for _, X in ESP_SETTINGS.NPCfolder_Ally:GetChildren() do
+                    if not ESP.Cache[X] then
+                        ESP.Functions.CacheEsp(X, "Ally")
+                    end
+                end
+            end
+
+            if ESP_SETTINGS.NPCfolder_Enemy then
+                for _, X in ESP_SETTINGS.NPCfolder_Enemy:GetChildren() do
+                    if not ESP.Cache[X] then
+                        ESP.Functions.CacheEsp(X, "Enemy")
+                    end
+                end
+            end
+
+            if ESP_SETTINGS.NPCfolder_Neutral then
+                for _, X in ESP_SETTINGS.NPCfolder_Neutral:GetChildren() do
+                    if not ESP.Cache[X] then
+                        ESP.Functions.CacheEsp(X, "Neutral")
+                    end
                 end
             end
 
