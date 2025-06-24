@@ -370,6 +370,9 @@ ESP = {
                     Team = Player.Team
                 elseif ESP.Functions.IsPlayerMonster(Player) then    
                     -- / idk
+                elseif ESP.Attributes[Player] then
+                    Character = Player
+                    Team = nil
                 else
                     isPreview = true
                 end
