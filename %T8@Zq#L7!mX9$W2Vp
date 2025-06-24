@@ -604,7 +604,7 @@ ESP = {
                             end
 
                             if ESP_SETTINGS.ShowTool and ESP_SETTINGS.Enabled then
-                                local tool = Character:FindFirstChildOfClass("Tool")
+                                local tool = Character:FindFirstChildOfClass("Tool") or Character:FindFirstChildOfClass("RayValue")
                                 esp.tool.Text = tool and (ESP_SETTINGS.Maps[tool.Name] or tool.Name) or ""
                                 esp.tool.Position = Vector2.new(boxPosition.X + boxSize.X / 2, nextY)
                                 esp.tool.Visible = true
