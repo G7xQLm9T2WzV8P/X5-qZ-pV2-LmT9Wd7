@@ -345,6 +345,7 @@ ESP = {
                 for _, X in ESP_SETTINGS.NPCfolder_Enemy:GetChildren() do
                     if not ESP.Cache[X] then
                         ESP.Functions.CacheEsp(X, "Enemy")
+                        print("Cached enemy", X.Name)
                     end
                 end
             end
